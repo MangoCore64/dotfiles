@@ -1,6 +1,5 @@
-set nocompatible
-
 so ~/.vim/plugins.vim
+
 syntax enable
 
 " Make backspace behave like every other editor.
@@ -16,7 +15,7 @@ set number relativenumber
 set omnifunc=syntaxcomplete#Complete
 
 let NERDTreeHijackNetrw = 0
-
+autocmd BufRead,BufNewFile *tmux.conf set filetype=tmux-conf
 set encoding=utf-8
 set fileencoding=utf-8
 set termencoding=utf-8
@@ -24,15 +23,16 @@ set tabstop=4
 set softtabstop=4
 set shiftwidth=4
 set autoindent
-set noshowmode
 set ruler
 set wildmenu
 set wildmode=longest:full,full
 set confirm
 set cursorline
-set fdm=marker
+set foldmethod=marker
 set laststatus=2
 set statusline=%4*%<\%m%<[%f\%r%h%w]\ [%{&ff},%{&fileencoding},%Y]%=\[Position=%l,%v,%p%%]
+set noshowmode
+set pastetoggle=<F9>
 
 if !&scrolloff
     set scrolloff=1
@@ -61,25 +61,17 @@ nmap <silent> <F11> :tabprev<cr>
 nmap <silent> <F12> :tabnext<cr>
 
 "-------------Visuals--------------"
-" set t_Co=256   " This is may or may not needed.
-" set background=dark
-colorscheme PaperColor
+set t_Co=256   " This is may or may not needed.
 set background=dark
-" set termguicolors
-" colorscheme quantum
-" let g:quantum_black=1
-" let g:quantum_italics=1
-" let g:airline_theme='quantum'
-" set termguicolors     " enable true colors support
-" let ayucolor="light"  " for light version of theme
-" let ayucolor="mirage" " for mirage version of theme
-" let ayucolor="dark"   " for dark version of theme
-" colorscheme ayu
+colorscheme PaperColor
 
 set guioptions-=l
 set guioptions-=L
 set guioptions-=r
 set guioptions-=R
+
+" 設定成對括號的顏色
+hi MatchParen cterm=bold ctermbg=yellow ctermfg=black
 
 "-------------Search--------------"
 " Highlight all matched terms.
@@ -120,6 +112,7 @@ nmap <Leader>e :NERDTreeToggle<cr>
 "/
 "/ Tagbar
 "/
+let g:tagbar_ctags_bin = '$HOME/bin/ctags'
 nmap <F8> :TagbarToggle<CR>
 let g:tagbar_type_css = {
 \ 'ctagstype' : 'Css',
@@ -129,15 +122,6 @@ let g:tagbar_type_css = {
         \ 'i:identities'
     \]
 \}
-
-"/
-"/ easy-align
-"/
-" Start interactive EasyAlign in visual mode (e.g. vipga)
-xmap ga <Plug>(EasyAlign)
-
-" Start interactive EasyAlign for a motion/text object (e.g. gaip)
-nmap ga <Plug>(EasyAlign)
 
 
 "/
@@ -149,31 +133,52 @@ let g:ctrlp_match_window = 'order:ttb,min:1,max:30,results:30'
 "/
 "/ ALE
 "/
-" Enable completion where available.
+" Set this. Airline will handle the rest."
 " let g:airline#extensions#ale#enabled = 1
-" let g:ale_fix_on_save = 1
-" nmap <silent> <c-x> <Plug>(ale_previous_wrap)
-" nmap <silent> <C-j> <Plug>(ale_next_wrap)
+" " navigate between errors quickly
+nmap <silent> <Space>j <Plug>(ale_previous_wrap)
+nmap <silent> <Space>k <Plug>(ale_next_wrap)
 
+let g:ale_echo_msg_error_str = 'E'
+let g:ale_echo_msg_warning_str = 'W'
+let g:ale_echo_msg_format = '[%linter%] %s [%severity%]'
+
+let g:ale_set_loclist = 0
+let g:ale_set_quickfix = 1
+" let g:ale_open_list = 1
+
+" let g:ale_lint_on_text_changed = 'never'
+" Don't run linters on opening a file
+let g:ale_lint_on_enter = 0
+
+let g:ale_fixers = {
+\    'php': ['php -l'],
+\    'perl': ['perl -c'],
+\}
+
+" let g:ale_fix_on_save = 1
 "/
 "/ vim-syntastic
 "/
-set statusline+=%#warningmsg#
-set statusline+=%{SyntasticStatuslineFlag()}
-set statusline+=%*
+" set statusline+=%#warningmsg#
+" set statusline+=%{SyntasticStatuslineFlag()}
+" set statusline+=%*
 
 " let g:syntastic_debug=3
-let g:syntastic_always_populate_loc_list = 1
-let g:syntastic_auto_loc_list = 1
-let g:syntastic_check_on_open = 1
-let g:syntastic_check_on_wq = 0
-let g:syntastic_php_checkers = ['php', 'phpcs', 'phpmd']
-let g:syntastic_perl_checkers = ['perl']
-let g:syntastic_enable_perl_checker = 1
+" let g:syntastic_always_populate_loc_list = 1
+" let g:syntastic_auto_loc_list = 1
+" let g:syntastic_check_on_open = 1
+" let g:syntastic_check_on_wq = 0
+" " let g:syntastic_php_checkers = ['php', 'phpcs', 'phpmd']
+" let g:syntastic_mode_map = { 'passive_filetypes': ['php']  }
+" let g:syntastic_perl_checkers = ['perl']
+" let g:syntastic_enable_perl_checker = 1
 "/
 "/ vim-gitgutter
 "/
-let g:gitgutter_highlight_lines = 1
+" let g:gitgutter_highlight_lines = 1
+let g:gitgutter_realtime = 0
+let g:gitgutter_eager = 0
 
 "/
 "/ Nerdcommenter
@@ -205,22 +210,20 @@ let g:NERDTrimTrailingWhitespace = 1
 "/ Airline
 "/
 " Set this. Airline will handle the rest.
-let g:airline#extensions#ale#enabled = 1
 let g:airline_powerline_fonts = 1
 "/
 "/ Ack
 "/
-" let g:ackprg = 'ack --vimgrep --smart-case'
-" cnoreabbrev ag Ack
-" cnoreabbrev aG Ack
-" cnoreabbrev Ag Ack
-" cnoreabbrev AG Ack
+if executable('ag')
+    let g:ackprg = 'ag --vimgrep --smart-case'
+endif
+cnoreabbrev ag Ack
+cnoreabbrev aG Ack
+cnoreabbrev Ag Ack
+cnoreabbrev AG Ack
 
-"/
-"/ AG
-"/
-let g:ackprg = 'ag --vimgrep'
-
+cnoreabbrev Ack Ack!
+nnoremap <Leader>a :Ack!<Space>
 "/
 "/ vim-indent-guides
 "/
@@ -238,13 +241,26 @@ let g:grep_cmd_opts = '--noheading'
 "/
 "/ SuperTab
 "/
-" let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
-" let g:SuperTabDefaultCompletionType = "<c-n>"
-" let g:SuperTabContextDefaultCompletionType = "<c-n>"
-" let g:SuperTabDefaultCompletionType = "context"
+let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
+let g:SuperTabDefaultCompletionType = "<c-n>"
+let g:SuperTabContextDefaultCompletionType = "<c-n>"
+let g:SuperTabDefaultCompletionType = "context"
+
+"/
+"/ lightline
+"/
+let g:lightline = {
+    \ 'active': {
+    \   'left': [ [ 'mode', 'paste' ],
+    \             [ 'gitbranch', 'readonly', 'filename', 'modified' ] ]
+    \ },
+    \ 'component_function': {
+    \   'gitbranch': 'fugitive#head'
+    \ },
+    \ }
+
 
 "-------------Auto-Commands--------------"
-
 "Automatically source the Vimrc file on save.
 augroup autosourcing
   autocmd!
@@ -253,3 +269,6 @@ augroup END
 
 highlight WhitespaceEOL ctermbg=red guibg=red
 match WhitespaceEOL /\s\+$/
+
+" Auto remove trailing whitespace
+autocmd BufWritePre * :%s/\s\+$//e
