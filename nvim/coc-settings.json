@@ -1,0 +1,53 @@
+{
+  "suggest.autoTrigger":"always",
+  "languageserver": {
+    "php": {
+      "command": "intelephense",
+      "args": ["--stdio"],
+      "filetypes": ["php"],
+      "initializationOptions": {
+        "storagePath": "/tmp/intelephense"
+      },
+      "settings": {
+        "intelephense": {
+          "files": {
+            "maxSize": 5000000
+          }
+        }
+      }
+    },
+    "perl": {
+      "command": "perl",
+      "args": [
+        "-MPerl::LanguageServer",
+        "-e",
+        "Perl::LanguageServer->run"
+      ],
+      "filetypes": ["perl"],
+      "port": 13603
+    },
+    "css": {
+      "command": "vscode-css-language-server",
+      "args": ["--stdio"],
+      "filetypes": ["css", "scss", "less"]
+    },
+    "html": {
+      "command": "vscode-html-language-server",
+      "args": ["--stdio"],
+      "filetypes": ["html"]
+    },
+    "javascript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"],
+      "filetypes": ["javascript", "javascriptreact", "typescript", "typescriptreact"]
+    }
+  },
+  "coc.preferences.formatOnSaveFiletypes": [
+    "php",
+    "perl",
+    "css",
+    "html",
+    "javascript"
+  ],
+  "snippets.ultisnips.pythonPrompt": false
+}

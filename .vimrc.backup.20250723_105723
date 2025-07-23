@@ -2,41 +2,43 @@
 " Specify a directory for plugins
 " Avoid using standard Vim directory names like 'plugin'
 call plug#begin('~/.vim/plugged')
-    " 延遲載入 ALE，僅在編輯時載入
-    Plug 'dense-analysis/ale', { 'on': [] }
-    " GitGutter 保持原樣但會調整更新頻率
-    Plug 'airblade/vim-gitgutter'
-    " File search and fuzzy finder
-    Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': { -> fzf#install() } }
-    Plug 'junegunn/fzf.vim'
+    Plug 'scrooloose/nerdtree', { 'on': 'NERDTreeToggle' }
+    Plug 'kien/ctrlp.vim', { 'on': 'NERDTreeToggle' }
 
-    " Theme
-    Plug 'NLKNguyen/papercolor-theme'
-    " Statusline
+    " Plug 'junegunn/fzf.vim'
+    Plug 'scrooloose/nerdcommenter'
     Plug 'itchyny/lightline.vim'
-
-    " Editing plugins
+    " Plug 'vim-airline/vim-airline'
+    " Plug 'vim-airline/vim-airline-themes'
+    " Plug 'vim-syntastic/syntastic'
+    Plug 'mileszs/ack.vim'
+    " Plug 'skwp/greplace.vim'
     Plug 'tpope/vim-surround'
+    Plug 'tpope/vim-fugitive'
     Plug 'terryma/vim-multiple-cursors'
+    Plug 'airblade/vim-gitgutter'
+    " Plug 'w0rp/ale'
     Plug 'ervandew/supertab'
-    Plug 'ap/vim-buftabline'
+    " Plug 'ajh17/VimCompletesMe'
+    Plug 'c9s/perlomni.vim', { 'for': 'perl' }
+    Plug 'NLKNguyen/papercolor-theme'
+    " Plug 'jiangmiao/auto-pairs'
+    Plug 'majutsushi/tagbar'
+    Plug 'nathanaelkane/vim-indent-guides'
+    Plug 'christoomey/vim-tmux-navigator'
+    " Plug 'vim-perl/vim-perl', { 'for': 'perl', 'do': 'make clean carp dancer highlight-all-pragmas moose test-more try-tiny'  }
+    Plug 'jeffkreeftmeijer/vim-numbertoggle'
+    Plug 'joshdick/onedark.vim'
+    Plug 'sheerun/vim-polyglot'
+    Plug 'morhetz/gruvbox'
+    Plug 'kshenoy/vim-signature'
 
-    Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
-    Plug 'pasky/claude.vim'
 " Initialize plugin system
 call plug#end()
 "----------Plugin End----------"
 
-"----------Basic Seting----------"
-" Security enhancements
-set nomodeline
-set modelines=0
-set viminfo='100,<50,s10,h,f1
 
-" Performance optimizations
-set synmaxcol=200
-set lazyredraw
-set ttyfast
+"----------Basic Seting----------"
 " Make backspace behave like every other editor.
 set backspace=indent,eol,start
 
@@ -63,15 +65,11 @@ set wildmenu
 set wildmode=longest:full,full
 set confirm
 set cursorline
+set foldmethod=marker
 set laststatus=2
 set statusline=%4*%<\%m%<[%f\%r%h%w]\ [%{&ff},%{&fileencoding},%Y]%=\[Position=%l,%v,%p%%]
 set noshowmode
 set pastetoggle=<F9>
-" set nowrap
-set clipboard=unnamedplus
-" set foldmethod=indent
-set foldmethod=manual
-set foldnestmax=2
 
 if !&scrolloff
     set scrolloff=1
@@ -98,16 +96,12 @@ set fileencodings=ucs-bom,utf-8,gbk,big5
 
 
 "-------------Visuals--------------"
+" set t_Co=256   " This is may or may not needed.
 set background=dark
-colorscheme PaperColor
+" colorscheme PaperColor
+let g:gruvbox_contrast_dark = "hard"
+colorscheme gruvbox
 
-highlight Normal guibg=NONE ctermbg=NONE
-highlight SignColumn guibg=NONE ctermbg=NONE
-set signcolumn="no"
-
-if !has('gui_running')
-    set t_Co=256
-endif
 
 set guioptions-=l
 set guioptions-=L
@@ -131,51 +125,37 @@ set splitbelow
 " And to the right. This feels more natural.
 set splitright
 
-set hidden
-
-" mapping of code folding
-nnoremap <space> za
-vnoremap <space> zf
-
 "Set simpler mappings to switch between splits.
-" nmap <C-J> <C-W><C-J>
-" nmap <C-K> <C-W><C-K>
-" nmap <C-H> <C-W><C-H>
-" nmap <C-L> <C-W><C-L>
+nmap <C-J> <C-W><C-J>
+nmap <C-K> <C-W><C-K>
+nmap <C-H> <C-W><C-H>
+nmap <C-L> <C-W><C-L>
 
 "-------------Mappings--------------"
 "-------------Normal Mode-----------"
-nnoremap <leader>y :call system('nc -N localhost 8377', @0)<CR>
-" Buffer List move
-nnoremap <silent>[b :bprevious<CR>
-nnoremap <silent>]b :bnext<CR>
-nnoremap <silent>[B :bfirst<CR>
-nnoremap <silent>]B :blast<CR>
-
+"
+nnoremap <F5> :!perl -c %
+nnoremap <F6> :!php -l %
 " Uppercase current word
 nnoremap <c-u> viwU
-" Remove trailing space
-nnoremap <leader>t :%s/\s\+$//e<cr>
 " Make it easy to edit the vimrc and source file.
 nnoremap <Leader>ev :vsplit $MYVIMRC<cr>
 nnoremap <Leader>sv :source $MYVIMRC<cr>
 " Add simple highlight removal.
 nnoremap <Leader><space> :nohlsearch<cr>
 " Make NERDTree easier to toggle
-" nnoremap <Leader>e :NERDTreeToggle<cr>
+nnoremap <Leader>e :NERDTreeToggle<cr>
 " Go to the beginning and end of the current line
 nnoremap H ^
 nnoremap L $
-" Go to next or previous buffer
-noremap <silent> <space>p :bprev<cr>
-noremap <silent> <space>n :bnext<cr>
+" Go to next or previous tab
+noremap <silent> <space>p :tabprev<cr>
+noremap <silent> <space>n :tabnext<cr>
 "-------------Visual Mode-----------"
 " Wrap selected text with double quotes/single quotes
 vnoremap " s""<esc>`<pl
 vnoremap ' s''<esc>`<pl
-" Back to normal mode
-vnoremap jk <ESC>
-vnoremap <ESC> <C-c>
+
 "-------------Insert Mode-----------"
 " Delete current line
 inoremap <c-d> <esc>ddi
@@ -197,16 +177,16 @@ inoremap <LEFT> <nop>
 "/
 "/ Tagbar
 "/
-"let g:tagbar_ctags_bin = '/bin/ctags'
-"nmap <F8> :TagbarToggle<CR>
-"let g:tagbar_type_css = {
-"\ 'ctagstype' : 'Css',
-"    \ 'kinds'     : [
-"        \ 'c:classes',
-"        \ 's:selectors',
-"        \ 'i:identities'
-"    \]
-"\}
+let g:tagbar_ctags_bin = '$HOME/bin/ctags'
+nmap <F8> :TagbarToggle<CR>
+let g:tagbar_type_css = {
+\ 'ctagstype' : 'Css',
+    \ 'kinds'     : [
+        \ 'c:classes',
+        \ 's:selectors',
+        \ 'i:identities'
+    \]
+\}
 
 
 "/
@@ -218,51 +198,54 @@ let g:ctrlp_match_window = 'order:ttb,min:1,max:30,results:30'
 "/
 "/ ALE
 "/
-" ALE 延遲載入設定
-augroup load_ale_plugin
-    autocmd!
-    autocmd InsertEnter * call plug#load('ale') | autocmd! load_ale_plugin
-augroup END
+" Set this. Airline will handle the rest."
+" let g:airline#extensions#ale#enabled = 1
+" " navigate between errors quickly
+" nmap <silent> <Space>j <Plug>(ale_previous_wrap)
+" nmap <silent> <Space>k <Plug>(ale_next_wrap)
 
-" 啟用或禁用 ALE
-let g:ale_enabled = 1
-" 設置檢查器運行的頻率
-let g:ale_lint_delay = 500
-let g:ale_sign_column_always = 1
+" let g:ale_echo_msg_error_str = 'E'
+" let g:ale_echo_msg_warning_str = 'W'
+" let g:ale_echo_msg_format = '[%linter%] %s [%severity%]'
+"
+" let g:ale_set_loclist = 0
+" let g:ale_set_quickfix = 1
+"
+" let g:ale_open_list = 1
 
-let g:ale_echo_msg_error_str = 'Error'
-let g:ale_echo_msg_warning_str = 'Warning'
-let g:ale_echo_msg_format = '[%linter%] %s [%severity%]'
+" let g:ale_lint_on_text_changed = 'never'
+" Don't run linters on opening a file
+" let g:ale_lint_on_enter = 0
+"
+" let g:ale_fixers = {
+" \    'php': ['php -l'],
+" \    'perl': ['perl -c'],
+" \}
 
-let g:ale_sign_error = '✘'
-let g:ale_sign_warning = '⚠'
-" 啟用自動修復功能
-let g:ale_fix_on_save = 1
-" 設置可用的修復器
-let g:ale_fixers = {
-\   '*': ['remove_trailing_lines', 'trim_whitespace'],
-\   'javascript': ['eslint'],
-\   'perl': ['perltidy'],
-\   'php': ['php_cs_fixer'],
-\}
-" 啟用檢查器和修復器的提示信息
-let g:ale_hover_cursor = 1
-highlight ALEErrorSign ctermbg=NONE ctermfg=red
-highlight ALEWarningSign ctermbg=NONE ctermfg=yellow
+" let g:ale_fix_on_save = 1
+"/
+"/ vim-syntastic
+"/
+" set statusline+=%#warningmsg#
+" set statusline+=%{SyntasticStatuslineFlag()}
+" set statusline+=%*
 
+" let g:syntastic_debug=3
+" let g:syntastic_always_populate_loc_list = 1
+" let g:syntastic_auto_loc_list = 1
+" let g:syntastic_check_on_open = 1
+" let g:syntastic_check_on_wq = 0
+" " let g:syntastic_php_checkers = ['php', 'phpcs', 'phpmd']
+" let g:syntastic_mode_map = { 'passive_filetypes': ['php']  }
+" let g:syntastic_perl_checkers = ['perl']
+" let g:syntastic_enable_perl_checker = 1
+"/
 "/ vim-gitgutter
 "/
-" GitGutter 性能優化
+" let g:gitgutter_highlight_lines = 1
 let g:gitgutter_realtime = 0
 let g:gitgutter_eager = 0
-let g:gitgutter_update_delay = 1000
-let g:gitgutter_max_signs = 500
 
-highlight GitGutterAdd ctermbg=NONE ctermfg=green
-highlight GitGutterChange ctermbg=NONE ctermfg=yellow
-highlight GitGutterDelete ctermbg=NONE ctermfg=red
-highlight GitGutterChangeDelete ctermbg=NONE ctermfg=yellow
-"/
 "/
 "/ Nerdcommenter
 "/
@@ -290,15 +273,20 @@ let g:NERDCommentEmptyLines = 1
 let g:NERDTrimTrailingWhitespace = 1
 
 "/
+"/ Airline
+"/
+" Set this. Airline will handle the rest.
+let g:airline_powerline_fonts = 1
+"/
 "/ Ack
 "/
-"if executable('ag')
-"    let g:ackprg = 'ag --vimgrep --smart-case'
-"endif
-"cnoreabbrev ag Ack
-"cnoreabbrev aG Ack
-"cnoreabbrev Ag Ack
-"noreabbrev AG Ack
+if executable('ag')
+    let g:ackprg = 'ag --vimgrep --smart-case'
+endif
+cnoreabbrev ag Ack
+cnoreabbrev aG Ack
+cnoreabbrev Ag Ack
+noreabbrev AG Ack
 
 cnoreabbrev Ack Ack!
 nnoremap <Leader>a :Ack!<Space>
@@ -319,8 +307,10 @@ let g:grep_cmd_opts = '--noheading'
 "/
 "/ SuperTab
 "/
-let g:SuperTabDefaultCompletionType = "context"
+let g:SuperTabDefaultCompletionType = "<C-X><C-O>"
+let g:SuperTabDefaultCompletionType = "<c-n>"
 let g:SuperTabContextDefaultCompletionType = "<c-n>"
+let g:SuperTabDefaultCompletionType = "context"
 
 "/
 "/ lightline
@@ -329,33 +319,15 @@ let g:lightline = {
     \ 'active': {
     \   'left': [
 	\		[ 'mode', 'paste' ],
-    \       [ 'readonly', 'filename' ]
+    \       [ 'gitbranch', 'readonly', 'filename', 'modified' ]
     \   ],
     \ },
     \ 'component_function': {
-    \   'filename': 'LightlineFilename',
+    \   'gitbranch': 'fugitive#head'
     \ },
-    \ 'subseparator': { 'left': '|', 'right': '|'  },
+    \ 'subseparator': { 'left': '⮁', 'right': '⮃'  },
     \ }
 
-function! LightlineFilename()
-    let filename = expand('%:t') !=# '' ? expand('%:t') : '[No Name]'
-    let modified = &modified ? ' +' : ''
-    return filename . modified
-endfunction
-
-
-"/
-"/ vim-sneak
-"/
-let g:sneak#label = 1
-map f <Plug>Sneak_s
-map F <Plug>Sneak_S
-
-"/
-"/ vim-lion
-"/
-let b:lion_squeeze_spaces = 1
 
 "-------------Auto-Commands--------------"
 "Automatically source the Vimrc file on save.
@@ -367,40 +339,6 @@ augroup END
 highlight WhitespaceEOL ctermbg=red guibg=red
 match WhitespaceEOL /\s\+$/
 
-
-" 解決tmux.conf的syntax highlight失效的問題
-au BufRead,BufNewFile .tmux.conf set filetype=tmux
 " Auto remove trailing whitespace
 " 先註解掉這功能，避免diff時不好找差異
 " autocmd BufWritePre * :%s/\s\+$//e
-
-
-" copy to attached terminal using the yank(1) script:
-" https://github.com/sunaku/home/blob/master/bin/yank
-function! Yank(text) abort
-  let escape = system('~/bin/yank.sh', a:text)
-  if v:shell_error
-    echoerr escape
-  else
-    call writefile([escape], '/dev/tty', 'b')
-  endif
-endfunction
-noremap <silent> <Leader>y y:<C-U>call Yank(@0)<CR>
-
-" nmap zuz <Plug>(FastFoldUpdate)
-" let g:fastfold_savehook = 1
-" let g:fastfold_fold_command_suffixes =  ['x','X','a','A','o','O','c','C']
-" let g:fastfold_fold_movement_commands = [']z', '[z', 'zj', 'zk']
-"
-" let g:markdown_folding = 1
-" let g:tex_fold_enabled = 1
-" let g:vimsyn_folding = 'af'
-" let g:xml_syntax_folding = 1
-" let g:javaScript_fold = 1
-" let g:sh_fold_enabled= 7
-" let g:ruby_fold = 1
-" let g:perl_fold = 1
-" let g:perl_fold_blocks = 1
-" let g:r_syntax_folding = 1
-" let g:rust_fold = 1
-" let g:php_folding = 1
