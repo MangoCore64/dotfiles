@@ -359,9 +359,15 @@ validate_config() {
     case $config_type in
         "vim")
             if command -v vim &> /dev/null; then
-                # 在臨時目錄中測試 vim 配置，避免產生臨時檔案
+                # 在 VM 環境中跳過 vim 語法驗證，避免卡住
+                if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ] || [ "$TERM" = "dumb" ]; then
+                    log_info "檢測到 VM/SSH 環境，跳過 vim 配置語法驗證"
+                    return 0
+                fi
+                
+                # 在本地環境中進行基本語法檢查，設定超時
                 local temp_dir=$(mktemp -d)
-                if ! (cd "$temp_dir" && vim -T dumb -n -i NONE -e -s -S "$config_file" +qall) 2>/dev/null; then
+                if ! timeout 10 bash -c "(cd '$temp_dir' && vim -T dumb -n -i NONE -e -s -S '$config_file' +qall)" 2>/dev/null; then
                     log_warning "vim 配置檔案語法可能有問題: $config_file"
                     rm -rf "$temp_dir"
                     return 1
@@ -371,7 +377,13 @@ validate_config() {
             ;;
         "tmux")
             if command -v tmux &> /dev/null; then
-                if ! tmux -f "$config_file" list-sessions &>/dev/null; then
+                # 在 VM 環境中跳過 tmux 複雜驗證，避免卡住
+                if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ] || [ "$TERM" = "dumb" ]; then
+                    log_info "檢測到 VM/SSH 環境，跳過 tmux 配置驗證"
+                    return 0
+                fi
+                
+                if ! timeout 5 tmux -f "$config_file" list-sessions &>/dev/null; then
                     # tmux 配置驗證較複雜，只做基本檢查
                     if ! grep -E "^[[:space:]]*#|^[[:space:]]*$|^[[:space:]]*[a-zA-Z]" "$config_file" >/dev/null; then
                         log_warning "tmux 配置檔案格式可能有問題: $config_file"
@@ -382,10 +394,16 @@ validate_config() {
             ;;
         "nvim")
             if command -v nvim &> /dev/null; then
+                # 在 VM 環境中跳過 nvim 語法驗證，避免卡住
+                if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ] || [ "$TERM" = "dumb" ]; then
+                    log_info "檢測到 VM/SSH 環境，跳過 nvim 配置語法驗證"
+                    return 0
+                fi
+                
                 # 檢查 lua 配置基本語法
                 if [ -f "$config_file/init.lua" ]; then
                     if command -v lua &> /dev/null; then
-                        if ! lua -e "dofile('$config_file/init.lua')" 2>/dev/null; then
+                        if ! timeout 5 lua -e "dofile('$config_file/init.lua')" 2>/dev/null; then
                             log_warning "nvim 配置可能有語法問題"
                             return 1
                         fi
