@@ -9,7 +9,7 @@ call plug#begin('~/.vim/plugged')
     Plug 'airblade/vim-gitgutter'
     " File search and fuzzy finder
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': { -> fzf#install() } }
-    Plug 'junegunn/fzf.vim', { 'tag': '1.7.0' }
+    Plug 'junegunn/fzf.vim'
 
     " Theme
     Plug 'NLKNguyen/papercolor-theme', { 'tag': 'v1.0' }
@@ -19,11 +19,11 @@ call plug#begin('~/.vim/plugged')
     " Editing plugins
     Plug 'tpope/vim-surround', { 'tag': 'v2.2' }
     Plug 'terryma/vim-multiple-cursors', { 'tag': 'v2.2' }
-    Plug 'ervandew/supertab', { 'tag': '3.0.0' }
-    Plug 'ap/vim-buftabline', { 'tag': 'v1.2' }
+    Plug 'ervandew/supertab'
+    Plug 'ap/vim-buftabline'
 
     Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
-    Plug 'pasky/claude.vim', { 'commit': '62e5c6f' }
+    Plug 'pasky/claude.vim'
 " Initialize plugin system
 call plug#end()
 "----------Plugin End----------"
