@@ -94,6 +94,12 @@ local function split_content(content, segment_size)
     return segments, true
 end
 
+-- 全域設定
+local M_config = {
+    enable_osc52 = true,  -- 設為 false 可禁用 OSC 52 以提高安全性
+    security_check = true -- 啟用敏感內容檢查
+}
+
 -- 內容處理選項
 local function process_selection(options)
     options = options or {}
@@ -136,6 +142,24 @@ end
 local function copy_to_clipboard(content)
         -- OSC 52 剪貼板 (支援 VM 到宿主機)
         local function try_osc52()
+            -- 檢查是否啟用 OSC 52
+            if not M_config.enable_osc52 then
+                return false
+            end
+            
+            -- 安全警告：檢查內容是否可能包含敏感資訊
+            if M_config.security_check then
+                local content_lower = content:lower()
+                if content_lower:match("password") or content_lower:match("secret") or 
+                   content_lower:match("token") or content_lower:match("key") or
+                   content_lower:match("api_key") or content_lower:match("auth") then
+                    vim.notify("⚠️  警告：內容可能包含敏感資訊，OSC 52 將透過終端傳輸", vim.log.levels.WARN)
+                    vim.notify("如有疑慮請使用本地剪貼板工具", vim.log.levels.INFO)
+                    -- 對於敏感內容，跳過 OSC 52
+                    return false
+                end
+            end
+            
             -- 檢查內容大小限制 (大多數終端限制約 100KB)
             if #content > 100000 then
                 vim.notify("Content too large for OSC 52 (" .. #content .. " bytes)", vim.log.levels.WARN)
@@ -143,6 +167,15 @@ local function copy_to_clipboard(content)
             end
             
             local base64_content = vim.base64.encode(content)
+            
+            -- 安全性：驗證 base64 內容只包含有效字符
+            local function sanitize_base64(b64_content)
+                -- 僅保留 base64 有效字符：A-Z, a-z, 0-9, +, /, =
+                return b64_content:gsub('[^A-Za-z0-9+/=]', '')
+            end
+            
+            base64_content = sanitize_base64(base64_content)
+            
             local term_program = os.getenv('TERM_PROGRAM') or ''
             local tmux = os.getenv('TMUX') or ''
             
@@ -473,6 +506,31 @@ function M.diagnose_clipboard()
     
     print(info)
     vim.notify("Clipboard diagnosis printed to messages")
+end
+
+-- 設定控制函數
+function M.configure(config)
+    if config.enable_osc52 ~= nil then
+        M_config.enable_osc52 = config.enable_osc52
+        vim.notify("OSC 52 " .. (config.enable_osc52 and "已啟用" or "已禁用"), vim.log.levels.INFO)
+    end
+    if config.security_check ~= nil then
+        M_config.security_check = config.security_check
+        vim.notify("安全檢查 " .. (config.security_check and "已啟用" or "已禁用"), vim.log.levels.INFO)
+    end
+end
+
+-- 顯示當前設定
+function M.show_config()
+    local config_info = "=== 剪貼板安全設定 ===\n"
+    config_info = config_info .. "OSC 52: " .. (M_config.enable_osc52 and "啟用" or "禁用") .. "\n"
+    config_info = config_info .. "安全檢查: " .. (M_config.security_check and "啟用" or "禁用") .. "\n"
+    config_info = config_info .. "\n使用方法：\n"
+    config_info = config_info .. "require('utils.clipboard').configure({enable_osc52 = false}) -- 禁用 OSC 52\n"
+    config_info = config_info .. "require('utils.clipboard').configure({security_check = false}) -- 禁用安全檢查"
+    
+    print(config_info)
+    vim.notify("剪貼板設定已輸出到訊息")
 end
 
 return M

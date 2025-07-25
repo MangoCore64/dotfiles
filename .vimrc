@@ -1,28 +1,29 @@
 "----------Plugin----------"
 " Specify a directory for plugins
 " Avoid using standard Vim directory names like 'plugin'
+" 注意：所有插件已鎖定穩定版本以確保相容性和安全性
 call plug#begin('~/.vim/plugged')
     " 延遲載入 ALE，僅在編輯時載入
-    Plug 'dense-analysis/ale', { 'on': [] }
+    Plug 'dense-analysis/ale', { 'on': [], 'tag': 'v4.0.0' }
     " GitGutter 保持原樣但會調整更新頻率
     Plug 'airblade/vim-gitgutter'
     " File search and fuzzy finder
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': { -> fzf#install() } }
-    Plug 'junegunn/fzf.vim'
+    Plug 'junegunn/fzf.vim', { 'tag': '1.7.0' }
 
     " Theme
-    Plug 'NLKNguyen/papercolor-theme'
+    Plug 'NLKNguyen/papercolor-theme', { 'tag': 'v1.0' }
     " Statusline
     Plug 'itchyny/lightline.vim'
 
     " Editing plugins
-    Plug 'tpope/vim-surround'
-    Plug 'terryma/vim-multiple-cursors'
-    Plug 'ervandew/supertab'
-    Plug 'ap/vim-buftabline'
+    Plug 'tpope/vim-surround', { 'tag': 'v2.2' }
+    Plug 'terryma/vim-multiple-cursors', { 'tag': 'v2.2' }
+    Plug 'ervandew/supertab', { 'tag': '3.0.0' }
+    Plug 'ap/vim-buftabline', { 'tag': 'v1.2' }
 
     Plug 'Exafunction/codeium.vim', { 'branch': 'main' }
-    Plug 'pasky/claude.vim'
+    Plug 'pasky/claude.vim', { 'commit': '62e5c6f' }
 " Initialize plugin system
 call plug#end()
 "----------Plugin End----------"
@@ -145,7 +146,6 @@ vnoremap <space> zf
 
 "-------------Mappings--------------"
 "-------------Normal Mode-----------"
-nnoremap <leader>y :call system('nc -N localhost 8377', @0)<CR>
 " Buffer List move
 nnoremap <silent>[b :bprevious<CR>
 nnoremap <silent>]b :bnext<CR>
@@ -375,17 +375,6 @@ au BufRead,BufNewFile .tmux.conf set filetype=tmux
 " autocmd BufWritePre * :%s/\s\+$//e
 
 
-" copy to attached terminal using the yank(1) script:
-" https://github.com/sunaku/home/blob/master/bin/yank
-function! Yank(text) abort
-  let escape = system('~/bin/yank.sh', a:text)
-  if v:shell_error
-    echoerr escape
-  else
-    call writefile([escape], '/dev/tty', 'b')
-  endif
-endfunction
-noremap <silent> <Leader>y y:<C-U>call Yank(@0)<CR>
 
 " nmap zuz <Plug>(FastFoldUpdate)
 " let g:fastfold_savehook = 1

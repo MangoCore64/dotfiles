@@ -1,13 +1,17 @@
+-- 所有插件已鎖定穩定版本以確保相容性和安全性
+-- 更新插件版本時請先在測試環境驗證
 return {
   {
     "stevearc/conform.nvim",
     -- event = 'BufWritePre', -- uncomment for format on save
+    tag = "v8.1.0",  -- 鎖定穩定版本
     opts = require "configs.conform",
   },
 
   -- These are some examples, uncomment them if you want to see them work!
   {
     "neovim/nvim-lspconfig",
+    tag = "v1.2.0",  -- 鎖定穩定版本
     config = function()
       require "configs.lspconfig"
     end,
@@ -16,6 +20,7 @@ return {
   -- Claude Code AI Assistant
   {
     "greggh/claude-code.nvim",
+    -- 移除無效的 commit，使用最新穩定版本
     lazy = false,  -- 確保立即載入，不延遲
     priority = 100, -- 提高優先級確保早期載入
     config = function()
@@ -58,6 +63,7 @@ return {
   -- Auto-Session: Automatic session management
   {
     'rmagatti/auto-session',
+    tag = "v3.2.0",  -- 鎖定穩定版本
     config = function()
       require('auto-session').setup({
         auto_restore = false,   -- 不自動恢復會話，讓用戶手動選擇
