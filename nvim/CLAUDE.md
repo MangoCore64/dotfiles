@@ -122,3 +122,7 @@ When modifying the configuration:
 - Avoid automatically generated text in commit messages
 - Do not include generic co-authored or generated text
 - Focus on clear, concise commit message descriptions that explain the specific changes
+
+## Dotfiles Synchronization
+
+- 直接複製 dotfiles 中的完整配置，確保每次同步後的install能反應最新的狀況

@@ -97,16 +97,22 @@ install_tmux() {
     log_info "請重啟 tmux 或執行 'tmux source-file ~/.tmux.conf' 來套用新設定"
 }
 
-# 安裝 nvim 設定 (NvChat 配置)
+# 安裝 nvim 設定 (完整 NvChad 配置含自定義功能)
 install_nvim() {
     if ! command -v nvim &> /dev/null; then
         log_warning "未找到 nvim，跳過 nvim 設定安裝"
         return
     fi
     
-    log_info "安裝 nvim 設定 (NvChat 配置)..."
+    log_info "安裝 nvim 設定 (完整 NvChad 配置)..."
     
-    # 檢查是否已有 NvChat 配置
+    # 檢查 nvim 配置來源是否存在
+    if [ ! -d "nvim" ]; then
+        log_error "找不到 nvim 配置目錄，請確認在 dotfiles 目錄中執行"
+        return 1
+    fi
+    
+    # 備份現有配置
     if [ -d "$HOME/.config/nvim" ]; then
         log_info "發現現有的 nvim 配置，將進行備份"
         backup_file "$HOME/.config/nvim"
@@ -115,16 +121,18 @@ install_nvim() {
     # 建立 .config 目錄（如果不存在）
     mkdir -p "$HOME/.config"
     
-    # 安裝 NvChat 配置（從官方 starter）
-    log_info "從 NvChad starter 下載最新配置..."
-    git clone https://github.com/NvChad/starter "$HOME/.config/nvim" --depth 1
+    # 直接複製完整的自定義 NvChad 配置
+    log_info "複製完整 NvChad 配置（包含智能剪貼簿、Claude Code 等功能）..."
+    cp -r nvim "$HOME/.config/"
     
-    # 移除 .git 目錄使其成為獨立配置
-    rm -rf "$HOME/.config/nvim/.git"
-    
-    log_success "NvChat 配置安裝完成"
-    log_info "請開啟 nvim，NvChad 會自動安裝所需 plugins"
-    log_info "可參考 ~/dotfiles/nvim/CLAUDE.md 了解配置詳情"
+    log_success "完整 NvChad 配置安裝完成"
+    log_info "配置包含以下功能："
+    echo "  - 智能剪貼簿系統 (<leader>cpr, <leader>cp)"
+    echo "  - Claude Code AI 助手 (<leader>cc)"
+    echo "  - 自動會話管理"
+    echo "  - NvChad 完整功能"
+    log_info "請開啟 nvim，將自動安裝所需 plugins"
+    log_info "詳細說明請參考: ~/dotfiles/nvim/CLAUDE.md"
 }
 
 # 驗證安裝
@@ -251,8 +259,10 @@ main() {
     echo "2. 開啟 vim 並執行 :PlugInstall 安裝 plugins"
     echo "3. 重啟 tmux 或執行 tmux source-file ~/.tmux.conf"
     if command -v nvim &> /dev/null; then
-        echo "4. 開啟 nvim，NvChad 會自動安裝 plugins"
-        echo "5. 參考 ~/dotfiles/nvim/CLAUDE.md 了解 NvChad 配置"
+        echo "4. 開啟 nvim，NvChad 會自動安裝所有 plugins"
+        echo "5. 測試智能剪貼簿：選取代碼後按 <leader>cpr"
+        echo "6. 測試 Claude Code：按 <leader>cc 開啟 AI 助手"
+        echo "7. 參考 ~/dotfiles/nvim/CLAUDE.md 了解完整功能"
     fi
 }
 
