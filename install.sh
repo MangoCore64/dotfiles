@@ -97,26 +97,34 @@ install_tmux() {
     log_info "請重啟 tmux 或執行 'tmux source-file ~/.tmux.conf' 來套用新設定"
 }
 
-# 安裝 nvim 設定
+# 安裝 nvim 設定 (NvChat 配置)
 install_nvim() {
     if ! command -v nvim &> /dev/null; then
         log_warning "未找到 nvim，跳過 nvim 設定安裝"
         return
     fi
     
-    log_info "安裝 nvim 設定..."
+    log_info "安裝 nvim 設定 (NvChat 配置)..."
     
-    # 備份現有 nvim 設定目錄
-    backup_file "$HOME/.config/nvim"
+    # 檢查是否已有 NvChat 配置
+    if [ -d "$HOME/.config/nvim" ]; then
+        log_info "發現現有的 nvim 配置，將進行備份"
+        backup_file "$HOME/.config/nvim"
+    fi
     
     # 建立 .config 目錄（如果不存在）
     mkdir -p "$HOME/.config"
     
-    # 複製 nvim 設定目錄
-    cp -r nvim "$HOME/.config/"
+    # 安裝 NvChat 配置（從官方 starter）
+    log_info "從 NvChad starter 下載最新配置..."
+    git clone https://github.com/NvChad/starter "$HOME/.config/nvim" --depth 1
     
-    log_success "nvim 設定安裝完成"
-    log_info "請開啟 nvim，Lazy.nvim 會自動安裝所需 plugins"
+    # 移除 .git 目錄使其成為獨立配置
+    rm -rf "$HOME/.config/nvim/.git"
+    
+    log_success "NvChat 配置安裝完成"
+    log_info "請開啟 nvim，NvChad 會自動安裝所需 plugins"
+    log_info "可參考 ~/dotfiles/nvim/CLAUDE.md 了解配置詳情"
 }
 
 # 驗證安裝
@@ -243,7 +251,8 @@ main() {
     echo "2. 開啟 vim 並執行 :PlugInstall 安裝 plugins"
     echo "3. 重啟 tmux 或執行 tmux source-file ~/.tmux.conf"
     if command -v nvim &> /dev/null; then
-        echo "4. 開啟 nvim，Lazy.nvim 會自動安裝 plugins"
+        echo "4. 開啟 nvim，NvChad 會自動安裝 plugins"
+        echo "5. 參考 ~/dotfiles/nvim/CLAUDE.md 了解 NvChad 配置"
     fi
 }
 

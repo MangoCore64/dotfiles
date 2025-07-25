@@ -34,7 +34,7 @@ return {
                 "yaml",
             },
             -- enable syntax highlighting
-            hightlight = {
+            highlight = {
                 enable = true,
             },
             -- enable indentation
