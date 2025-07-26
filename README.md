@@ -10,9 +10,11 @@
 ├── .tmux.conf          # Tmux 設定檔
 ├── nvim/               # Neovim 設定目錄
 │   ├── init.lua        # Neovim 主設定檔
-│   ├── coc-settings.json
-│   ├── lazy-lock.json
+│   ├── lazy-lock.json  # 插件版本鎖定檔
 │   └── lua/            # Lua 設定檔目錄
+│       ├── configs/    # 插件設定檔
+│       ├── plugins/    # 自定義插件
+│       └── utils/      # 工具函數
 ├── install.sh          # 自動安裝腳本
 └── README.md           # 說明文件
 ```
@@ -39,6 +41,12 @@ cd dotfiles
 
 # 強制安裝 neovim
 ./install.sh --install-neovim
+
+# 安裝 Nerd Fonts（圖示顯示）
+./install.sh --install-fonts
+
+# 僅檢查安裝狀態不執行安裝
+./install.sh --check-only
 ```
 
 ### 方法二：手動安裝
@@ -136,6 +144,10 @@ cp -r nvim ~/.config/
   - 支援包管理器安裝
   - 支援預編譯二進制下載
   - 支援 cargo 安裝
+- **Nerd Fonts** (圖示顯示)
+  - 自動檢測系統字體目錄
+  - 智能選擇字體安裝方式
+  - 支援 macOS 和 Linux 平台
 
 ### 選用工具
 - git (用於 plugin 管理)
@@ -184,6 +196,9 @@ nvim
 
 # 自動安裝所有缺失工具
 ./install.sh --install-deps
+
+# 安裝 Nerd Fonts 修復圖示問題
+./install.sh --install-fonts
 ```
 
 ## 自訂設定
@@ -199,6 +214,12 @@ MIT License
 
 ## 更新記錄
 
-- 2025-07-26: 新增 neovim 和 ripgrep 自動安裝功能，支援多平台和無權限安裝
+- 2025-07-27: 
+  - 強化安裝腳本安全性：URL 驗證、檔案完整性檢查、錯誤處理優化
+  - 更新 NvChad blink.cmp 配置與文檔同步
+- 2025-07-26: 
+  - 新增 neovim 和 ripgrep 自動安裝功能，支援多平台和無權限安裝
+  - 新增 Nerd Fonts 自動安裝功能，修正圖示顯示問題
+  - 修正 vim 插件版本參考和相容性問題
 - 2025-07-25: 更新 NvChad 配置，新增 Claude Code 和智能剪貼簿功能
 - 2025-07-23: 初始版本，包含 vim、tmux、nvim 設定
