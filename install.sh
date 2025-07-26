@@ -6,39 +6,112 @@
 # 移除 set -e，改用明確的錯誤處理
 # set -e
 
-# 錯誤處理函數
-handle_critical_error() {
-    local error_msg="$1"
-    local exit_code="${2:-1}"
+# URL 安全驗證函數
+validate_url() {
+    local url="$1"
+    local description="${2:-URL}"
     
-    log_error "關鍵錯誤: $error_msg"
-    log_info "腳本將退出，請檢查上述錯誤訊息"
-    exit "$exit_code"
+    # 檢查必要參數
+    if [ -z "$url" ]; then
+        log_error "validate_url: 缺少 URL 參數"
+        return 1
+    fi
+    
+    # 檢查 URL 格式
+    if [[ ! "$url" =~ ^https?://[a-zA-Z0-9.-]+[a-zA-Z0-9]/.*$ ]]; then
+        log_error "$description 格式無效: $url"
+        return 1
+    fi
+    
+    # 檢查協議安全性
+    if [[ ! "$url" =~ ^https:// ]]; then
+        log_warning "$description 使用非加密協議: $url"
+    fi
+    
+    # 檢查是否為已知安全域名
+    case "$url" in
+        https://github.com/*|https://api.github.com/*|https://raw.githubusercontent.com/*)
+            return 0
+            ;;
+        https://httpbin.org/*)
+            log_warning "$description 指向測試網站，僅供開發使用"
+            return 0
+            ;;
+        *)
+            log_warning "$description 指向未知域名，請確認安全性: $url"
+            return 0
+            ;;
+    esac
 }
 
-# 安全執行命令的函數
-safe_eval() {
-    local cmd="$1"
-    local error_msg="$2"
+# 增強的 GitHub API 呼叫函數
+get_github_latest_release() {
+    local repo="$1"
+    local field="${2:-tag_name}"
+    local max_retries="${3:-3}"
     
-    if ! eval "$cmd"; then
-        if [ -n "$error_msg" ]; then
-            log_error "$error_msg"
+    # 檢查必要參數
+    if [ -z "$repo" ]; then
+        log_error "get_github_latest_release: 缺少 repository 參數"
+        return 1
+    fi
+    
+    local api_url="https://api.github.com/repos/$repo/releases/latest"
+    
+    # 驗證構建的 API URL
+    if ! validate_url "$api_url" "GitHub API URL"; then
+        log_error "無效的 GitHub API URL: $api_url"
+        return 1
+    fi
+    
+    local retry_count=0
+    local result=""
+    
+    while [ $retry_count -lt $max_retries ]; do
+        retry_count=$((retry_count + 1))
+        
+        log_info "取得 $repo 最新版本 (第 $retry_count 次嘗試)..."
+        
+        # 使用增強的 curl 呼叫，包含 User-Agent 和錯誤處理
+        result=$(curl -s --max-time 30 --connect-timeout 10 \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "User-Agent: dotfiles-installer/1.0 (https://github.com/user/dotfiles)" \
+            "$api_url" 2>/dev/null)
+        
+        # 檢查 curl 是否成功
+        if [ $? -eq 0 ] && [ -n "$result" ]; then
+            # 嘗試解析 JSON 回應
+            local parsed_value=""
+            
+            # 優先使用 jq 如果可用
+            if command -v jq &> /dev/null; then
+                parsed_value=$(echo "$result" | jq -r ".$field // empty" 2>/dev/null)
+            else
+                # 備用：使用 grep 和 sed 解析
+                parsed_value=$(echo "$result" | grep "\"$field\":" | sed -E "s/.*\"$field\":[[:space:]]*\"([^\"]+)\".*/\\1/" | head -n1)
+            fi
+            
+            # 檢查是否獲得有效結果
+            if [ -n "$parsed_value" ] && [ "$parsed_value" != "null" ]; then
+                echo "$parsed_value"
+                return 0
+            else
+                log_warning "第 $retry_count 次 API 呼叫返回無效資料"
+            fi
+        else
+            log_warning "第 $retry_count 次 GitHub API 呼叫失敗"
         fi
-        return 1
-    fi
-    return 0
-}
-
-# 檢查網路連線
-check_network_connectivity() {
-    local test_url="$1"
-    local timeout="${2:-10}"
+        
+        # 如果不是最後一次嘗試，等待後重試
+        if [ $retry_count -lt $max_retries ]; then
+            local wait_time=$((retry_count * 2))
+            log_info "等待 $wait_time 秒後重試..."
+            sleep $wait_time
+        fi
+    done
     
-    if ! curl -s --connect-timeout 5 --max-time "$timeout" "$test_url" >/dev/null 2>&1; then
-        return 1
-    fi
-    return 0
+    log_error "無法從 GitHub API 取得 $repo 的 $field（已重試 $max_retries 次）"
+    return 1
 }
 
 # 檢查和設定腳本權限
@@ -88,6 +161,240 @@ log_warning() {
 
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# 檔案完整性驗證函數
+verify_download() {
+    local file="$1"
+    local expected_hash="$2"
+    local description="${3:-檔案}"
+    
+    # 檢查輸入參數
+    if [ -z "$file" ] || [ -z "$expected_hash" ]; then
+        log_error "verify_download: 缺少必要參數"
+        return 1
+    fi
+    
+    # 檢查檔案是否存在
+    if [ ! -f "$file" ]; then
+        log_error "驗證失敗: $description 不存在"
+        return 1
+    fi
+    
+    local actual_hash
+    
+    # 選擇可用的雜湊工具
+    if command -v sha256sum &> /dev/null; then
+        actual_hash=$(sha256sum "$file" | cut -d' ' -f1)
+    elif command -v shasum &> /dev/null; then
+        actual_hash=$(shasum -a 256 "$file" | cut -d' ' -f1)
+    else
+        log_warning "無法驗證 $description 完整性：缺少 sha256sum 或 shasum"
+        # 在沒有雜湊工具的情況下，檢查檔案大小是否合理
+        local file_size
+        file_size=$(wc -c < "$file" 2>/dev/null || echo "0")
+        if [ "$file_size" -lt 1000 ]; then
+            log_error "$description 檔案過小，可能下載不完整"
+            return 1
+        fi
+        log_warning "跳過 $description 完整性驗證（無雜湊工具）"
+        return 0
+    fi
+    
+    # 驗證雜湊值
+    if [ "$actual_hash" = "$expected_hash" ]; then
+        log_success "$description 完整性驗證通過"
+        return 0
+    else
+        log_error "$description 完整性驗證失敗"
+        log_error "預期: $expected_hash"
+        log_error "實際: $actual_hash"
+        
+        # 檢查是否跳過雜湊驗證（用於測試或緊急情況）
+        if [ "$SKIP_HASH_CHECK" = "true" ]; then
+            log_warning "跳過雜湊驗證（SKIP_HASH_CHECK=true）"
+            return 0
+        else
+            log_error "設定 SKIP_HASH_CHECK=true 可跳過驗證（不建議）"
+            return 1
+        fi
+    fi
+}
+
+# 安全的套件安裝函數（避免 eval 代碼注入）
+install_package() {
+    local package_name="$1"
+    local description="${2:-$package_name}"
+    
+    # 檢查必要參數
+    if [ -z "$package_name" ]; then
+        log_error "install_package: 缺少套件名稱"
+        return 1
+    fi
+    
+    # 檢查是否有可用的包管理器
+    if [ "$PKG_MANAGER" = "none" ]; then
+        log_error "無可用的包管理器來安裝 $description"
+        return 1
+    fi
+    
+    log_info "使用 $PKG_MANAGER 安裝 $description..."
+    
+    # 根據包管理器類型使用相應的安裝命令
+    case "$PKG_MANAGER" in
+        "brew")
+            if brew install "$package_name"; then
+                log_success "$description 通過 Homebrew 安裝成功"
+                return 0
+            else
+                log_error "$description 通過 Homebrew 安裝失敗"
+                return 1
+            fi
+            ;;
+        "apt")
+            if sudo apt-get update && sudo apt-get install -y "$package_name"; then
+                log_success "$description 通過 apt 安裝成功"
+                return 0
+            else
+                log_error "$description 通過 apt 安裝失敗"
+                return 1
+            fi
+            ;;
+        "yum")
+            if sudo yum install -y "$package_name"; then
+                log_success "$description 通過 yum 安裝成功"
+                return 0
+            else
+                log_error "$description 通過 yum 安裝失敗"
+                return 1
+            fi
+            ;;
+        "dnf")
+            if sudo dnf install -y "$package_name"; then
+                log_success "$description 通過 dnf 安裝成功"
+                return 0
+            else
+                log_error "$description 通過 dnf 安裝失敗"
+                return 1
+            fi
+            ;;
+        "pacman")
+            if sudo pacman -S --noconfirm "$package_name"; then
+                log_success "$description 通過 pacman 安裝成功"
+                return 0
+            else
+                log_error "$description 通過 pacman 安裝失敗"
+                return 1
+            fi
+            ;;
+        *)
+            log_error "不支援的包管理器: $PKG_MANAGER"
+            return 1
+            ;;
+    esac
+}
+
+# 安全的路徑操作函數
+safe_remove_directory() {
+    local dir_path="$1"
+    local description="${2:-目錄}"
+    
+    # 安全檢查
+    if [ -z "$dir_path" ]; then
+        log_error "safe_remove_directory: 缺少目錄路徑"
+        return 1
+    fi
+    
+    # 防止刪除根目錄或重要系統目錄
+    case "$dir_path" in
+        "/" | "/bin" | "/sbin" | "/usr" | "/var" | "/etc" | "/home" | "$HOME")
+            log_error "拒絕刪除重要系統目錄: $dir_path"
+            return 1
+            ;;
+        "")
+            log_error "目錄路徑為空，拒絕執行 rm"
+            return 1
+            ;;
+    esac
+    
+    # 檢查路徑是否包含危險字符
+    if [[ "$dir_path" == *".."* ]] || [[ "$dir_path" == *"*"* ]]; then
+        log_error "目錄路徑包含危險字符: $dir_path"
+        return 1
+    fi
+    
+    # 檢查目錄是否存在且為目錄
+    if [ ! -d "$dir_path" ]; then
+        log_warning "$description 不存在或不是目錄: $dir_path"
+        return 0
+    fi
+    
+    # 執行安全的刪除操作
+    log_info "清理 $description: $dir_path"
+    if rm -rf "$dir_path"; then
+        log_success "$description 清理完成"
+        return 0
+    else
+        log_error "$description 清理失敗"
+        return 1
+    fi
+}
+
+# 統一的 PATH 更新管理函數
+add_to_path() {
+    local bin_dir="$1"
+    local description="${2:-$bin_dir}"
+    
+    # 檢查必要參數
+    if [ -z "$bin_dir" ]; then
+        log_error "add_to_path: 缺少目錄路徑"
+        return 1
+    fi
+    
+    # 檢查目錄是否存在
+    if [ ! -d "$bin_dir" ]; then
+        log_error "目錄不存在: $bin_dir"
+        return 1
+    fi
+    
+    # 檢查 PATH 是否已包含此目錄
+    if [[ ":$PATH:" == *":$bin_dir:"* ]]; then
+        log_info "$description 已在 PATH 中"
+        return 0
+    fi
+    
+    log_info "將 $description 加入 PATH"
+    
+    # 選擇適當的 shell 配置檔案
+    local shell_config=""
+    if [ -n "$BASH_VERSION" ]; then
+        shell_config="$HOME/.bashrc"
+    elif [ -n "$ZSH_VERSION" ]; then
+        shell_config="$HOME/.zshrc"
+    else
+        shell_config="$HOME/.profile"
+    fi
+    
+    # 檢查配置檔案是否存在
+    if [ ! -f "$shell_config" ]; then
+        touch "$shell_config"
+    fi
+    
+    # 檢查是否已經添加過此路徑
+    if ! grep -q "export PATH.*$bin_dir" "$shell_config" 2>/dev/null; then
+        echo "" >> "$shell_config"
+        echo "# Added by dotfiles installer" >> "$shell_config"
+        echo "export PATH=\"$bin_dir:\$PATH\"" >> "$shell_config"
+        log_success "已將 $description 添加到 $shell_config"
+    else
+        log_info "$description 已存在於 $shell_config 中"
+    fi
+    
+    # 立即更新當前會話的 PATH
+    export PATH="$bin_dir:$PATH"
+    
+    log_info "PATH 已更新，請重啟終端或執行 'source $shell_config'"
+    return 0
 }
 
 # 備份現有檔案
@@ -255,8 +562,8 @@ install_neovim_appimage() {
         fi
     done
     
-    # 設定執行權限
-    chmod +x "$appimage_path"
+    # 設定執行權限 (755: 擁有者可讀寫執行，群組和其他使用者可讀執行)
+    chmod 755 "$appimage_path"
     
     # 創建符號連結
     if [ -e "$nvim_path" ]; then
@@ -264,29 +571,8 @@ install_neovim_appimage() {
     fi
     ln -s "$appimage_path" "$nvim_path"
     
-    # 檢查 PATH 設定
-    if [[ ":$PATH:" != *":$local_bin:"* ]]; then
-        log_info "將 ~/.local/bin 加入 PATH"
-        
-        # 檢查並更新 shell 配置檔案
-        local shell_config=""
-        if [ -n "$BASH_VERSION" ]; then
-            shell_config="$HOME/.bashrc"
-        elif [ -n "$ZSH_VERSION" ]; then
-            shell_config="$HOME/.zshrc"
-        else
-            shell_config="$HOME/.profile"
-        fi
-        
-        echo "" >> "$shell_config"
-        echo "# Added by dotfiles installer" >> "$shell_config"
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_config"
-        
-        # 立即更新當前會話的 PATH
-        export PATH="$local_bin:$PATH"
-        
-        log_info "PATH 已更新，請重啟終端或執行 'source $shell_config'"
-    fi
+    # 將 neovim 加入 PATH
+    add_to_path "$local_bin" "neovim 執行檔目錄"
     
     # 驗證安裝
     if command -v nvim &> /dev/null && check_neovim_version; then
@@ -358,13 +644,13 @@ install_neovim_from_source() {
     log_info "下載 neovim 源碼..."
     if ! git clone --depth 1 --branch stable https://github.com/neovim/neovim.git; then
         log_error "neovim 源碼下載失敗"
-        rm -rf "$build_dir"
+        safe_remove_directory "$build_dir" "neovim 編譯目錄"
         return 1
     fi
     
     cd neovim || {
         log_error "無法進入 neovim 源碼目錄"
-        rm -rf "$build_dir"
+        safe_remove_directory "$build_dir" "neovim 編譯目錄"
         return 1
     }
     
@@ -372,44 +658,23 @@ install_neovim_from_source() {
     log_info "開始編譯 neovim (這可能需要幾分鐘)..."
     if ! make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX="$install_prefix"; then
         log_error "neovim 編譯失敗"
-        rm -rf "$build_dir"
+        safe_remove_directory "$build_dir" "neovim 編譯目錄"
         return 1
     fi
     
     log_info "安裝 neovim..."
     if ! make install; then
         log_error "neovim 安裝失敗"
-        rm -rf "$build_dir"
+        safe_remove_directory "$build_dir" "neovim 編譯目錄"
         return 1
     fi
     
     # 清理編譯目錄
-    rm -rf "$build_dir"
+    safe_remove_directory "$build_dir" "neovim 編譯目錄"
     
-    # 檢查 PATH 設定
+    # 將 neovim 加入 PATH
     local local_bin="$install_prefix/bin"
-    if [[ ":$PATH:" != *":$local_bin:"* ]]; then
-        log_info "將 $local_bin 加入 PATH"
-        
-        # 檢查並更新 shell 配置檔案
-        local shell_config=""
-        if [ -n "$BASH_VERSION" ]; then
-            shell_config="$HOME/.bashrc"
-        elif [ -n "$ZSH_VERSION" ]; then
-            shell_config="$HOME/.zshrc"
-        else
-            shell_config="$HOME/.profile"
-        fi
-        
-        echo "" >> "$shell_config"
-        echo "# Added by dotfiles installer" >> "$shell_config"
-        echo "export PATH=\"$local_bin:\$PATH\"" >> "$shell_config"
-        
-        # 立即更新當前會話的 PATH
-        export PATH="$local_bin:$PATH"
-        
-        log_info "PATH 已更新，請重啟終端或執行 'source $shell_config'"
-    fi
+    add_to_path "$local_bin" "neovim 執行檔目錄"
     
     # 驗證安裝
     if command -v nvim &> /dev/null && check_neovim_version; then
@@ -471,14 +736,15 @@ install_ripgrep_binary() {
     esac
     
     # 取得最新版本號
-    log_info "取得 ripgrep 最新版本..."
     local latest_version
-    latest_version=$(curl -s https://api.github.com/repos/BurntSushi/ripgrep/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    latest_version=$(get_github_latest_release "BurntSushi/ripgrep" "tag_name")
     
     if [ -z "$latest_version" ]; then
         log_error "無法取得 ripgrep 最新版本信息"
         return 1
     fi
+    
+    log_success "找到 ripgrep 最新版本: $latest_version"
     
     # 建立完整檔名和 URL
     local actual_filename
@@ -504,7 +770,7 @@ install_ripgrep_binary() {
     log_info "下載 ripgrep $latest_version..."
     if ! curl -fLo "$actual_filename" --connect-timeout 30 --max-time 120 --retry 3 "$download_url"; then
         log_error "ripgrep 下載失敗"
-        rm -rf "$temp_dir"
+        safe_remove_directory "$temp_dir" "ripgrep 安裝臨時目錄"
         return 1
     fi
     
@@ -512,7 +778,7 @@ install_ripgrep_binary() {
     log_info "解壓縮 ripgrep..."
     if ! $extract_cmd "$actual_filename"; then
         log_error "ripgrep 解壓縮失敗"
-        rm -rf "$temp_dir"
+        safe_remove_directory "$temp_dir" "ripgrep 安裝臨時目錄"
         return 1
     fi
     
@@ -522,43 +788,19 @@ install_ripgrep_binary() {
     
     if [ -z "$rg_binary" ]; then
         log_error "找不到 rg 執行檔"
-        rm -rf "$temp_dir"
+        safe_remove_directory "$temp_dir" "ripgrep 安裝臨時目錄"
         return 1
     fi
     
     # 複製到本地 bin 目錄
     cp "$rg_binary" "$local_bin/rg"
-    chmod +x "$local_bin/rg"
+    chmod 755 "$local_bin/rg"
     
     # 清理臨時檔案
-    rm -rf "$temp_dir"
+    safe_remove_directory "$temp_dir" "ripgrep 安裝臨時目錄"
     
-    # 檢查 PATH 設定
-    if [[ ":$PATH:" != *":$local_bin:"* ]]; then
-        log_info "將 ~/.local/bin 加入 PATH"
-        
-        # 檢查並更新 shell 配置檔案
-        local shell_config=""
-        if [ -n "$BASH_VERSION" ]; then
-            shell_config="$HOME/.bashrc"
-        elif [ -n "$ZSH_VERSION" ]; then
-            shell_config="$HOME/.zshrc"
-        else
-            shell_config="$HOME/.profile"
-        fi
-        
-        # 檢查是否已經添加過 PATH
-        if ! grep -q "$local_bin" "$shell_config" 2>/dev/null; then
-            echo "" >> "$shell_config"
-            echo "# Added by dotfiles installer" >> "$shell_config"
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_config"
-        fi
-        
-        # 立即更新當前會話的 PATH
-        export PATH="$local_bin:$PATH"
-        
-        log_info "PATH 已更新，請重啟終端或執行 'source $shell_config'"
-    fi
+    # 將 ripgrep 加入 PATH
+    add_to_path "$local_bin" "ripgrep 執行檔目錄"
     
     # 驗證安裝
     if command -v rg &> /dev/null; then
@@ -589,8 +831,7 @@ install_ripgrep() {
         "macos")
             if [ "$PKG_MANAGER" = "brew" ]; then
                 log_info "使用 Homebrew 安裝 ripgrep..."
-                if safe_eval "$INSTALL_CMD ripgrep" "Homebrew 安裝 ripgrep 失敗"; then
-                    log_success "ripgrep 通過 Homebrew 安裝成功"
+                if install_package "ripgrep" "ripgrep"; then
                     return 0
                 else
                     log_warning "Homebrew 安裝失敗，嘗試預編譯二進制..."
@@ -612,8 +853,7 @@ install_ripgrep() {
                 log_info "使用 $PKG_MANAGER 安裝 ripgrep..."
                 
                 local pkg_name="ripgrep"
-                if safe_eval "$INSTALL_CMD $pkg_name" "$PKG_MANAGER 安裝 ripgrep 失敗"; then
-                    log_success "ripgrep 通過 $PKG_MANAGER 安裝成功"
+                if install_package "$pkg_name" "ripgrep"; then
                     return 0
                 else
                     log_warning "$PKG_MANAGER 安裝失敗，嘗試預編譯二進制..."
@@ -666,8 +906,7 @@ install_neovim() {
         "macos")
             if [ "$PKG_MANAGER" = "brew" ]; then
                 log_info "使用 Homebrew 安裝 neovim..."
-                if eval "$INSTALL_CMD neovim"; then
-                    log_success "neovim 通過 Homebrew 安裝成功"
+                if install_package "neovim" "neovim"; then
                     return 0
                 else
                     log_warning "Homebrew 安裝失敗，嘗試源碼編譯..."
@@ -693,7 +932,7 @@ install_neovim() {
                 case "$PKG_MANAGER" in
                     "apt")
                         # Ubuntu/Debian 可能需要 ppa 來獲取新版本
-                        if ! eval "$INSTALL_CMD $pkg_name"; then
+                        if ! install_package "$pkg_name" "neovim"; then
                             log_warning "$PKG_MANAGER 安裝失敗，嘗試使用 AppImage..."
                             if install_neovim_appimage; then
                                 return 0
@@ -709,7 +948,7 @@ install_neovim() {
                         fi
                         ;;
                     *)
-                        if eval "$INSTALL_CMD $pkg_name"; then
+                        if install_package "$pkg_name" "neovim"; then
                             if check_neovim_version; then
                                 log_success "neovim 通過 $PKG_MANAGER 安裝成功"
                                 return 0
@@ -788,7 +1027,16 @@ install_dependencies() {
     
     # 執行安裝
     log_info "正在安裝缺失的程式..."
-    if eval "$INSTALL_CMD ${missing_deps[*]}"; then
+    # 逐一安裝缺失的程式（避免安全風險）
+    local install_success=true
+    for dep in "${missing_deps[@]}"; do
+        if ! install_package "$dep" "$dep"; then
+            install_success=false
+            break
+        fi
+    done
+    
+    if [ "$install_success" = "true" ]; then
         log_success "程式安裝完成"
         return 0
     else
@@ -820,12 +1068,12 @@ check_dependencies() {
                 log_success "基本工具已安裝"
             else
                 log_error "無法自動安裝缺失工具，請手動安裝後重試"
-                exit 1
+                return 1
             fi
         else
             log_error "請先安裝這些工具再執行安裝腳本"
             log_info "或使用 --install-deps 選項自動安裝"
-            exit 1
+            return 1
         fi
     else
         log_success "基本工具已安裝"
@@ -1071,10 +1319,10 @@ validate_config() {
                 local temp_dir=$(mktemp -d)
                 if ! timeout 10 bash -c "(cd '$temp_dir' && vim -T dumb -n -i NONE -e -s -S '$config_file' +qall)" 2>/dev/null; then
                     log_warning "vim 配置檔案語法可能有問題: $config_file"
-                    rm -rf "$temp_dir"
+                    safe_remove_directory "$temp_dir" "ripgrep 安裝臨時目錄"
                     return 1
                 fi
-                rm -rf "$temp_dir"
+                safe_remove_directory "$temp_dir" "ripgrep 安裝臨時目錄"
             fi
             ;;
         "tmux")
@@ -1304,7 +1552,10 @@ main() {
     detect_system
     
     # 檢查必要工具
-    check_dependencies
+    if ! check_dependencies; then
+        log_error "必要工具檢查失敗，安裝中止"
+        exit 1
+    fi
     
     # 如果只是檢查模式，在此結束
     if [ "$check_only" = "true" ]; then
