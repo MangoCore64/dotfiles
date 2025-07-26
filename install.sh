@@ -306,11 +306,56 @@ install_tmux() {
     log_info "請重啟 tmux 或執行 'tmux source-file ~/.tmux.conf' 來套用新設定"
 }
 
+# 安裝 Nerd Fonts (NvChad 必需)
+install_nerd_fonts() {
+    log_info "檢查 Nerd Fonts..."
+    
+    # 檢查是否已安裝 Nerd Fonts
+    if ls "$HOME/Library/Fonts/"*NerdFont* &>/dev/null; then
+        log_success "Nerd Fonts 已安裝"
+        return 0
+    fi
+    
+    if [ "$PKG_MANAGER" = "brew" ]; then
+        log_info "安裝 Nerd Fonts (NvChad 必需的圖示字體)..."
+        
+        # 安裝 FiraCode 和 JetBrains Mono Nerd Font
+        if brew install font-fira-code-nerd-font font-jetbrains-mono-nerd-font; then
+            log_success "Nerd Fonts 安裝完成"
+            
+            # 設定 macOS 字體平滑化
+            if defaults write -g AppleFontSmoothing -int 1 2>/dev/null; then
+                log_info "已啟用 macOS 字體平滑化"
+            fi
+            
+            log_info "請在終端機設定中選擇以下字體之一："
+            echo "  - FiraCode Nerd Font"
+            echo "  - JetBrains Mono Nerd Font"
+            
+            return 0
+        else
+            log_error "Nerd Fonts 安裝失敗"
+            return 1
+        fi
+    else
+        log_warning "請手動安裝 Nerd Fonts 以正確顯示 NvChad 圖示："
+        echo "1. 訪問 https://www.nerdfonts.com/font-downloads"
+        echo "2. 下載並安裝 FiraCode Nerd Font 或 JetBrains Mono Nerd Font"
+        echo "3. 在終端機設定中選擇 Nerd Font"
+        return 1
+    fi
+}
+
 # 安裝 nvim 設定 (完整 NvChad 配置含自定義功能)
 install_nvim() {
     if ! command -v nvim &> /dev/null; then
         log_warning "未找到 nvim，跳過 nvim 設定安裝"
         return
+    fi
+    
+    # 安裝 Nerd Fonts (NvChad 必需)
+    if ! install_nerd_fonts; then
+        log_warning "Nerd Fonts 安裝失敗，NvChad 可能無法正確顯示圖示"
     fi
     
     log_info "安裝 nvim 設定 (完整 NvChad 配置)..."
@@ -611,10 +656,11 @@ main() {
     echo "2. 開啟 vim 並執行 :PlugInstall 安裝 plugins"
     echo "3. 重啟 tmux 或執行 tmux source-file ~/.tmux.conf"
     if command -v nvim &> /dev/null; then
-        echo "4. 開啟 nvim，NvChad 會自動安裝所有 plugins"
-        echo "5. 測試智能剪貼簿：選取代碼後按 <leader>cpr"
-        echo "6. 測試 Claude Code：按 <leader>cc 開啟 AI 助手"
-        echo "7. 參考 ~/dotfiles/nvim/CLAUDE.md 了解完整功能"
+        echo "4. 在終端機設定中選擇 Nerd Font (如 FiraCode Nerd Font)"
+        echo "5. 開啟 nvim，NvChad 會自動安裝所有 plugins"
+        echo "6. 測試智能剪貼簿：選取代碼後按 <leader>cpr"
+        echo "7. 測試 Claude Code：按 <leader>cc 開啟 AI 助手"
+        echo "8. 參考 ~/dotfiles/nvim/CLAUDE.md 了解完整功能"
     fi
 }
 
