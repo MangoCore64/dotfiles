@@ -3,7 +3,43 @@
 # Dotfiles 安裝腳本
 # 用於在新機器上快速同步設定檔案
 
-set -e
+# 移除 set -e，改用明確的錯誤處理
+# set -e
+
+# 錯誤處理函數
+handle_critical_error() {
+    local error_msg="$1"
+    local exit_code="${2:-1}"
+    
+    log_error "關鍵錯誤: $error_msg"
+    log_info "腳本將退出，請檢查上述錯誤訊息"
+    exit "$exit_code"
+}
+
+# 安全執行命令的函數
+safe_eval() {
+    local cmd="$1"
+    local error_msg="$2"
+    
+    if ! eval "$cmd"; then
+        if [ -n "$error_msg" ]; then
+            log_error "$error_msg"
+        fi
+        return 1
+    fi
+    return 0
+}
+
+# 檢查網路連線
+check_network_connectivity() {
+    local test_url="$1"
+    local timeout="${2:-10}"
+    
+    if ! curl -s --connect-timeout 5 --max-time "$timeout" "$test_url" >/dev/null 2>&1; then
+        return 1
+    fi
+    return 0
+}
 
 # 檢查和設定腳本權限
 check_script_permissions() {
@@ -87,6 +123,42 @@ backup_file() {
     return 0
 }
 
+# 檢查 neovim 版本是否符合要求
+check_neovim_version() {
+    if ! command -v nvim &> /dev/null; then
+        return 1  # neovim 未安裝
+    fi
+    
+    local version_output
+    version_output=$(nvim --version 2>/dev/null | head -n1)
+    
+    if [ -z "$version_output" ]; then
+        log_warning "無法獲取 neovim 版本信息"
+        return 1
+    fi
+    
+    # 提取版本號 (例如: NVIM v0.9.1 -> 0.9.1)
+    local version
+    version=$(echo "$version_output" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | sed 's/v//')
+    
+    if [ -z "$version" ]; then
+        log_warning "無法解析 neovim 版本: $version_output"
+        return 1
+    fi
+    
+    # 檢查是否為 0.8.0 以上版本 (NvChad 最低要求)
+    local major minor patch
+    IFS='.' read -r major minor patch <<< "$version"
+    
+    if [ "$major" -gt 0 ] || ([ "$major" -eq 0 ] && [ "$minor" -ge 8 ]); then
+        log_info "neovim 版本: $version (符合 NvChad 要求)"
+        return 0
+    else
+        log_warning "neovim 版本過舊: $version (需要 0.8.0+)"
+        return 1
+    fi
+}
+
 # 檢測系統和包管理器
 detect_system() {
     log_info "檢測系統環境..."
@@ -133,6 +205,551 @@ detect_system() {
     esac
     
     log_info "系統: $SYSTEM, 包管理器: $PKG_MANAGER"
+}
+
+# 使用 AppImage 安裝 neovim (無需管理員權限)
+install_neovim_appimage() {
+    log_info "使用 AppImage 安裝 neovim..."
+    
+    # 檢查系統是否支援 AppImage (僅 Linux)
+    if [ "$SYSTEM" != "linux" ]; then
+        log_error "AppImage 安裝僅支援 Linux 系統"
+        return 1
+    fi
+    
+    # 創建本地 bin 目錄
+    local local_bin="$HOME/.local/bin"
+    mkdir -p "$local_bin"
+    
+    # 下載最新的 neovim AppImage
+    local appimage_url="https://github.com/neovim/neovim/releases/latest/download/nvim.appimage"
+    local appimage_path="$local_bin/nvim.appimage"
+    local nvim_path="$local_bin/nvim"
+    
+    log_info "下載 neovim AppImage..."
+    
+    # 檢查網路連線
+    if ! curl -s --connect-timeout 5 --max-time 10 "https://api.github.com/repos/neovim/neovim" >/dev/null; then
+        log_error "無法連接到 GitHub，請檢查網路連線"
+        return 1
+    fi
+    
+    # 使用更強韌的下載邏輯
+    local download_attempts=0
+    local max_attempts=3
+    
+    while [ $download_attempts -lt $max_attempts ]; do
+        download_attempts=$((download_attempts + 1))
+        log_info "嘗試下載 neovim AppImage (第 $download_attempts 次)..."
+        
+        if curl -fLo "$appimage_path" --connect-timeout 30 --max-time 300 --retry 2 "$appimage_url"; then
+            log_success "neovim AppImage 下載成功"
+            break
+        else
+            log_warning "下載失敗 (第 $download_attempts 次)"
+            if [ $download_attempts -eq $max_attempts ]; then
+                log_error "neovim AppImage 下載失敗，已重試 $max_attempts 次"
+                return 1
+            fi
+            sleep 2
+        fi
+    done
+    
+    # 設定執行權限
+    chmod +x "$appimage_path"
+    
+    # 創建符號連結
+    if [ -e "$nvim_path" ]; then
+        rm -f "$nvim_path"
+    fi
+    ln -s "$appimage_path" "$nvim_path"
+    
+    # 檢查 PATH 設定
+    if [[ ":$PATH:" != *":$local_bin:"* ]]; then
+        log_info "將 ~/.local/bin 加入 PATH"
+        
+        # 檢查並更新 shell 配置檔案
+        local shell_config=""
+        if [ -n "$BASH_VERSION" ]; then
+            shell_config="$HOME/.bashrc"
+        elif [ -n "$ZSH_VERSION" ]; then
+            shell_config="$HOME/.zshrc"
+        else
+            shell_config="$HOME/.profile"
+        fi
+        
+        echo "" >> "$shell_config"
+        echo "# Added by dotfiles installer" >> "$shell_config"
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_config"
+        
+        # 立即更新當前會話的 PATH
+        export PATH="$local_bin:$PATH"
+        
+        log_info "PATH 已更新，請重啟終端或執行 'source $shell_config'"
+    fi
+    
+    # 驗證安裝
+    if command -v nvim &> /dev/null && check_neovim_version; then
+        log_success "neovim AppImage 安裝成功"
+        return 0
+    else
+        log_error "neovim AppImage 安裝驗證失敗"
+        return 1
+    fi
+}
+
+# 從源碼編譯安裝 neovim (最後選項)
+install_neovim_from_source() {
+    log_info "從源碼編譯安裝 neovim..."
+    
+    # 檢查編譯依賴
+    local build_deps=()
+    local missing_deps=()
+    
+    case "$SYSTEM" in
+        "linux")
+            build_deps=("git" "make" "cmake" "gcc" "g++")
+            ;;
+        "macos")
+            build_deps=("git" "make" "cmake")
+            if ! command -v gcc &> /dev/null && ! command -v clang &> /dev/null; then
+                log_error "需要安裝 Xcode Command Line Tools: xcode-select --install"
+                return 1
+            fi
+            ;;
+        *)
+            log_error "不支援在此系統上從源碼編譯"
+            return 1
+            ;;
+    esac
+    
+    # 檢查編譯依賴是否存在
+    for dep in "${build_deps[@]}"; do
+        if ! command -v "$dep" &> /dev/null; then
+            missing_deps+=("$dep")
+        fi
+    done
+    
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        log_error "缺少編譯依賴: ${missing_deps[*]}"
+        log_info "請先安裝這些工具後重試"
+        return 1
+    fi
+    
+    # 建立臨時編譯目錄，使用更安全的隨機名稱
+    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local random_suffix=$(od -An -N4 -tx4 /dev/urandom 2>/dev/null | tr -d ' ' || echo "$RANDOM")
+    local build_dir="/tmp/neovim-build-${timestamp}-${random_suffix}"
+    local install_prefix="$HOME/.local"
+    
+    # 檢查臨時目錄是否已存在（避免衝突）
+    if [ -e "$build_dir" ]; then
+        log_error "臨時目錄已存在，可能有其他安裝程序正在執行: $build_dir"
+        return 1
+    fi
+    
+    mkdir -p "$build_dir"
+    cd "$build_dir" || {
+        log_error "無法進入編譯目錄: $build_dir"
+        return 1
+    }
+    
+    # 下載 neovim 源碼
+    log_info "下載 neovim 源碼..."
+    if ! git clone --depth 1 --branch stable https://github.com/neovim/neovim.git; then
+        log_error "neovim 源碼下載失敗"
+        rm -rf "$build_dir"
+        return 1
+    fi
+    
+    cd neovim || {
+        log_error "無法進入 neovim 源碼目錄"
+        rm -rf "$build_dir"
+        return 1
+    }
+    
+    # 編譯和安裝
+    log_info "開始編譯 neovim (這可能需要幾分鐘)..."
+    if ! make CMAKE_BUILD_TYPE=RelWithDebInfo CMAKE_INSTALL_PREFIX="$install_prefix"; then
+        log_error "neovim 編譯失敗"
+        rm -rf "$build_dir"
+        return 1
+    fi
+    
+    log_info "安裝 neovim..."
+    if ! make install; then
+        log_error "neovim 安裝失敗"
+        rm -rf "$build_dir"
+        return 1
+    fi
+    
+    # 清理編譯目錄
+    rm -rf "$build_dir"
+    
+    # 檢查 PATH 設定
+    local local_bin="$install_prefix/bin"
+    if [[ ":$PATH:" != *":$local_bin:"* ]]; then
+        log_info "將 $local_bin 加入 PATH"
+        
+        # 檢查並更新 shell 配置檔案
+        local shell_config=""
+        if [ -n "$BASH_VERSION" ]; then
+            shell_config="$HOME/.bashrc"
+        elif [ -n "$ZSH_VERSION" ]; then
+            shell_config="$HOME/.zshrc"
+        else
+            shell_config="$HOME/.profile"
+        fi
+        
+        echo "" >> "$shell_config"
+        echo "# Added by dotfiles installer" >> "$shell_config"
+        echo "export PATH=\"$local_bin:\$PATH\"" >> "$shell_config"
+        
+        # 立即更新當前會話的 PATH
+        export PATH="$local_bin:$PATH"
+        
+        log_info "PATH 已更新，請重啟終端或執行 'source $shell_config'"
+    fi
+    
+    # 驗證安裝
+    if command -v nvim &> /dev/null && check_neovim_version; then
+        log_success "neovim 源碼編譯安裝成功"
+        return 0
+    else
+        log_error "neovim 源碼編譯安裝驗證失敗"
+        return 1
+    fi
+}
+
+# 使用預編譯二進制安裝 ripgrep (無需管理員權限)
+install_ripgrep_binary() {
+    log_info "使用預編譯二進制安裝 ripgrep..."
+    
+    # 創建本地 bin 目錄
+    local local_bin="$HOME/.local/bin"
+    mkdir -p "$local_bin"
+    
+    # 檢測系統架構
+    local arch
+    case "$(uname -m)" in
+        x86_64|amd64)
+            arch="x86_64"
+            ;;
+        arm64|aarch64)
+            arch="aarch64"
+            ;;
+        armv7l)
+            arch="arm"
+            ;;
+        *)
+            log_error "不支援的系統架構: $(uname -m)"
+            return 1
+            ;;
+    esac
+    
+    # 設定下載 URL 和檔名
+    local base_url="https://github.com/BurntSushi/ripgrep/releases/latest/download"
+    local filename
+    local extract_cmd
+    
+    case "$SYSTEM" in
+        "linux")
+            filename="ripgrep-*-${arch}-unknown-linux-musl.tar.gz"
+            extract_cmd="tar -xzf"
+            ;;
+        "macos")
+            if [ "$arch" = "aarch64" ]; then
+                arch="aarch64"
+            fi
+            filename="ripgrep-*-${arch}-apple-darwin.tar.gz"
+            extract_cmd="tar -xzf"
+            ;;
+        *)
+            log_error "不支援的作業系統: $SYSTEM"
+            return 1
+            ;;
+    esac
+    
+    # 取得最新版本號
+    log_info "取得 ripgrep 最新版本..."
+    local latest_version
+    latest_version=$(curl -s https://api.github.com/repos/BurntSushi/ripgrep/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    
+    if [ -z "$latest_version" ]; then
+        log_error "無法取得 ripgrep 最新版本信息"
+        return 1
+    fi
+    
+    # 建立完整檔名和 URL
+    local actual_filename
+    case "$SYSTEM" in
+        "linux")
+            actual_filename="ripgrep-${latest_version}-${arch}-unknown-linux-musl.tar.gz"
+            ;;
+        "macos")
+            actual_filename="ripgrep-${latest_version}-${arch}-apple-darwin.tar.gz"
+            ;;
+    esac
+    
+    local download_url="$base_url/$actual_filename"
+    local temp_dir="/tmp/ripgrep-install-$$"
+    
+    mkdir -p "$temp_dir"
+    cd "$temp_dir" || {
+        log_error "無法進入臨時目錄: $temp_dir"
+        return 1
+    }
+    
+    # 下載 ripgrep
+    log_info "下載 ripgrep $latest_version..."
+    if ! curl -fLo "$actual_filename" --connect-timeout 30 --max-time 120 --retry 3 "$download_url"; then
+        log_error "ripgrep 下載失敗"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # 解壓縮
+    log_info "解壓縮 ripgrep..."
+    if ! $extract_cmd "$actual_filename"; then
+        log_error "ripgrep 解壓縮失敗"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # 尋找並複製 rg 執行檔
+    local rg_binary
+    rg_binary=$(find . -name "rg" -type f | head -n1)
+    
+    if [ -z "$rg_binary" ]; then
+        log_error "找不到 rg 執行檔"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    # 複製到本地 bin 目錄
+    cp "$rg_binary" "$local_bin/rg"
+    chmod +x "$local_bin/rg"
+    
+    # 清理臨時檔案
+    rm -rf "$temp_dir"
+    
+    # 檢查 PATH 設定
+    if [[ ":$PATH:" != *":$local_bin:"* ]]; then
+        log_info "將 ~/.local/bin 加入 PATH"
+        
+        # 檢查並更新 shell 配置檔案
+        local shell_config=""
+        if [ -n "$BASH_VERSION" ]; then
+            shell_config="$HOME/.bashrc"
+        elif [ -n "$ZSH_VERSION" ]; then
+            shell_config="$HOME/.zshrc"
+        else
+            shell_config="$HOME/.profile"
+        fi
+        
+        # 檢查是否已經添加過 PATH
+        if ! grep -q "$local_bin" "$shell_config" 2>/dev/null; then
+            echo "" >> "$shell_config"
+            echo "# Added by dotfiles installer" >> "$shell_config"
+            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$shell_config"
+        fi
+        
+        # 立即更新當前會話的 PATH
+        export PATH="$local_bin:$PATH"
+        
+        log_info "PATH 已更新，請重啟終端或執行 'source $shell_config'"
+    fi
+    
+    # 驗證安裝
+    if command -v rg &> /dev/null; then
+        local rg_version
+        rg_version=$(rg --version | head -n1)
+        log_success "ripgrep 預編譯二進制安裝成功: $rg_version"
+        return 0
+    else
+        log_error "ripgrep 安裝驗證失敗"
+        return 1
+    fi
+}
+
+# 主要 ripgrep 安裝函數
+install_ripgrep() {
+    log_info "檢查和安裝 ripgrep..."
+    
+    # 如果已安裝 ripgrep，跳過安裝
+    if command -v rg &> /dev/null; then
+        log_success "ripgrep 已安裝"
+        return 0
+    fi
+    
+    log_info "需要安裝 ripgrep"
+    
+    # 根據系統和權限選擇安裝方法
+    case "$SYSTEM" in
+        "macos")
+            if [ "$PKG_MANAGER" = "brew" ]; then
+                log_info "使用 Homebrew 安裝 ripgrep..."
+                if safe_eval "$INSTALL_CMD ripgrep" "Homebrew 安裝 ripgrep 失敗"; then
+                    log_success "ripgrep 通過 Homebrew 安裝成功"
+                    return 0
+                else
+                    log_warning "Homebrew 安裝失敗，嘗試預編譯二進制..."
+                    if install_ripgrep_binary; then
+                        return 0
+                    fi
+                fi
+            else
+                log_warning "macOS 系統建議先安裝 Homebrew"
+                log_info "嘗試使用預編譯二進制安裝..."
+                if install_ripgrep_binary; then
+                    return 0
+                fi
+            fi
+            ;;
+        "linux")
+            # 嘗試包管理器安裝
+            if [ "$PKG_MANAGER" != "none" ]; then
+                log_info "使用 $PKG_MANAGER 安裝 ripgrep..."
+                
+                local pkg_name="ripgrep"
+                if safe_eval "$INSTALL_CMD $pkg_name" "$PKG_MANAGER 安裝 ripgrep 失敗"; then
+                    log_success "ripgrep 通過 $PKG_MANAGER 安裝成功"
+                    return 0
+                else
+                    log_warning "$PKG_MANAGER 安裝失敗，嘗試預編譯二進制..."
+                    if install_ripgrep_binary; then
+                        return 0
+                    fi
+                fi
+            else
+                # 沒有包管理器，直接嘗試預編譯二進制
+                log_info "未找到包管理器，嘗試預編譯二進制安裝..."
+                if install_ripgrep_binary; then
+                    return 0
+                fi
+            fi
+            ;;
+        *)
+            log_error "不支援的作業系統: $SYSTEM"
+            return 1
+            ;;
+    esac
+    
+    # 最後嘗試 cargo 安裝 (如果有 Rust)
+    if command -v cargo &> /dev/null; then
+        log_info "嘗試使用 cargo 安裝 ripgrep..."
+        if cargo install ripgrep; then
+            log_success "ripgrep 通過 cargo 安裝成功"
+            return 0
+        fi
+    fi
+    
+    log_error "所有 ripgrep 安裝方法都失敗了"
+    log_info "請手動安裝 ripgrep 後重新執行腳本"
+    return 1
+}
+
+# 主要 neovim 安裝函數
+install_neovim() {
+    log_info "檢查和安裝 neovim..."
+    
+    # 如果已有符合版本要求的 neovim，跳過安裝
+    if check_neovim_version; then
+        log_success "neovim 已安裝且版本符合要求"
+        return 0
+    fi
+    
+    log_info "需要安裝或升級 neovim"
+    
+    # 根據系統和權限選擇安裝方法
+    case "$SYSTEM" in
+        "macos")
+            if [ "$PKG_MANAGER" = "brew" ]; then
+                log_info "使用 Homebrew 安裝 neovim..."
+                if eval "$INSTALL_CMD neovim"; then
+                    log_success "neovim 通過 Homebrew 安裝成功"
+                    return 0
+                else
+                    log_warning "Homebrew 安裝失敗，嘗試源碼編譯..."
+                    if install_neovim_from_source; then
+                        return 0
+                    fi
+                fi
+            else
+                log_warning "macOS 系統建議先安裝 Homebrew"
+                echo "安裝命令: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+                if install_neovim_from_source; then
+                    return 0
+                fi
+            fi
+            ;;
+        "linux")
+            # 嘗試包管理器安裝
+            if [ "$PKG_MANAGER" != "none" ]; then
+                log_info "使用 $PKG_MANAGER 安裝 neovim..."
+                
+                # 針對不同包管理器的 neovim 包名
+                local pkg_name="neovim"
+                case "$PKG_MANAGER" in
+                    "apt")
+                        # Ubuntu/Debian 可能需要 ppa 來獲取新版本
+                        if ! eval "$INSTALL_CMD $pkg_name"; then
+                            log_warning "$PKG_MANAGER 安裝失敗，嘗試使用 AppImage..."
+                            if install_neovim_appimage; then
+                                return 0
+                            fi
+                        elif ! check_neovim_version; then
+                            log_warning "系統 neovim 版本過舊，嘗試使用 AppImage..."
+                            if install_neovim_appimage; then
+                                return 0
+                            fi
+                        else
+                            log_success "neovim 通過 $PKG_MANAGER 安裝成功"
+                            return 0
+                        fi
+                        ;;
+                    *)
+                        if eval "$INSTALL_CMD $pkg_name"; then
+                            if check_neovim_version; then
+                                log_success "neovim 通過 $PKG_MANAGER 安裝成功"
+                                return 0
+                            else
+                                log_warning "包管理器安裝的版本過舊，嘗試 AppImage..."
+                                if install_neovim_appimage; then
+                                    return 0
+                                fi
+                            fi
+                        else
+                            log_warning "$PKG_MANAGER 安裝失敗，嘗試 AppImage..."
+                            if install_neovim_appimage; then
+                                return 0
+                            fi
+                        fi
+                        ;;
+                esac
+            else
+                # 沒有包管理器，直接嘗試 AppImage
+                log_info "未找到包管理器，嘗試 AppImage 安裝..."
+                if install_neovim_appimage; then
+                    return 0
+                fi
+            fi
+            
+            # 如果 AppImage 失敗，嘗試源碼編譯
+            log_warning "AppImage 安裝失敗，嘗試源碼編譯..."
+            if install_neovim_from_source; then
+                return 0
+            fi
+            ;;
+        *)
+            log_error "不支援的作業系統: $SYSTEM"
+            return 1
+            ;;
+    esac
+    
+    log_error "所有 neovim 安裝方法都失敗了"
+    log_info "請手動安裝 neovim 0.8.0+ 版本後重新執行腳本"
+    return 1
 }
 
 # 安裝缺失的依賴程式
@@ -184,22 +801,23 @@ install_dependencies() {
 check_dependencies() {
     log_info "檢查必要工具..."
     
-    local tools=("vim" "tmux")
+    local basic_tools=("vim" "tmux")
     local missing_tools=()
     
-    for tool in "${tools[@]}"; do
+    # 檢查基本工具
+    for tool in "${basic_tools[@]}"; do
         if ! command -v "$tool" &> /dev/null; then
             missing_tools+=("$tool")
         fi
     done
     
     if [ ${#missing_tools[@]} -gt 0 ]; then
-        log_warning "缺少必要工具: ${missing_tools[*]}"
+        log_warning "缺少基本工具: ${missing_tools[*]}"
         
         # 如果啟用自動安裝選項
         if [ "$AUTO_INSTALL_DEPS" = "true" ]; then
             if install_dependencies "${missing_tools[@]}"; then
-                log_success "所有必要工具已安裝"
+                log_success "基本工具已安裝"
             else
                 log_error "無法自動安裝缺失工具，請手動安裝後重試"
                 exit 1
@@ -210,7 +828,41 @@ check_dependencies() {
             exit 1
         fi
     else
-        log_success "所有必要工具已安裝"
+        log_success "基本工具已安裝"
+    fi
+    
+    # 檢查和安裝 neovim (核心功能)
+    log_info "檢查 neovim (主要編輯器)..."
+    if [ "$AUTO_INSTALL_DEPS" = "true" ] || [ "$INSTALL_NEOVIM" = "true" ]; then
+        if ! install_neovim; then
+            log_warning "neovim 安裝失敗，但可以繼續安裝其他配置"
+            log_info "建議手動安裝 neovim 0.8.0+ 以獲得完整功能"
+        fi
+    else
+        if ! check_neovim_version; then
+            log_warning "neovim 未安裝或版本過舊 (需要 0.8.0+)"
+            log_info "使用 --install-deps 選項可自動安裝 neovim"
+            log_info "nvim 是主要編輯器，強烈建議安裝"
+        else
+            log_success "neovim 已安裝且版本符合要求"
+        fi
+    fi
+    
+    # 檢查和安裝 ripgrep (NvChad 重要依賴)
+    log_info "檢查 ripgrep (搜尋工具)..."
+    if [ "$AUTO_INSTALL_DEPS" = "true" ]; then
+        if ! install_ripgrep; then
+            log_warning "ripgrep 安裝失敗，但可以繼續安裝其他配置"
+            log_info "ripgrep 提供更好的搜尋體驗，建議手動安裝"
+        fi
+    else
+        if ! command -v rg &> /dev/null; then
+            log_warning "ripgrep 未安裝 (NvChad 強烈建議使用)"
+            log_info "使用 --install-deps 選項可自動安裝 ripgrep"
+            log_info "ripgrep 提供快速的文件內容搜尋功能"
+        else
+            log_success "ripgrep 已安裝"
+        fi
     fi
 }
 
@@ -348,9 +1000,14 @@ install_nerd_fonts() {
 
 # 安裝 nvim 設定 (完整 NvChad 配置含自定義功能)
 install_nvim() {
-    if ! command -v nvim &> /dev/null; then
-        log_warning "未找到 nvim，跳過 nvim 設定安裝"
-        return
+    # 確保 neovim 可用
+    if ! check_neovim_version; then
+        log_info "嘗試安裝 neovim..."
+        if ! install_neovim; then
+            log_error "neovim 安裝失敗，無法安裝 nvim 配置"
+            log_info "請手動安裝 neovim 0.8.0+ 後重新執行"
+            return 1
+        fi
     fi
     
     # 安裝 Nerd Fonts (NvChad 必需)
@@ -543,14 +1200,23 @@ show_usage() {
     echo "  -t, --tmux          僅安裝 tmux 設定"
     echo "  -n, --nvim          僅安裝 nvim 設定"
     echo "  -a, --all           安裝所有設定 (預設)"
-    echo "  --install-deps      自動安裝缺失的相依程式"
+    echo "  --install-deps      自動安裝缺失的相依程式 (包含 neovim)"
+    echo "  --install-neovim    強制安裝 neovim (支援多種方式)"
     echo "  --check-only        僅檢查相依程式狀況，不安裝設定"
     echo ""
+    echo "安裝方式說明:"
+    echo "  neovim 安裝優先順序:"
+    echo "    1. 包管理器 (brew, apt, yum, dnf, pacman)"
+    echo "    2. AppImage (Linux 無權限時)"
+    echo "    3. 源碼編譯 (最後選項)"
+    echo ""
     echo "範例:"
-    echo "  $0                  # 安裝所有設定"
-    echo "  $0 --vim            # 僅安裝 vim 設定"
-    echo "  $0 --install-deps   # 自動安裝缺失程式並安裝設定"
-    echo "  $0 --check-only     # 僅檢查相依程式狀況"
+    echo "  $0                      # 安裝所有設定"
+    echo "  $0 --vim                # 僅安裝 vim 設定"
+    echo "  $0 --install-deps       # 自動安裝所有缺失程式並安裝設定"
+    echo "  $0 --install-neovim     # 強制安裝 neovim"
+    echo "  $0 --nvim --install-neovim # 安裝 neovim 並配置"
+    echo "  $0 --check-only         # 僅檢查相依程式狀況"
 }
 
 # 主程式
@@ -560,8 +1226,25 @@ main() {
     # 檢查腳本權限
     check_script_permissions
     
-    # 切換到腳本所在目錄
-    cd "$(dirname "${BASH_SOURCE[0]}")"
+    # 切換到腳本所在目錄，處理符號連結
+    local script_dir
+    if [ -L "${BASH_SOURCE[0]}" ]; then
+        # 如果腳本是符號連結，獲取真實路徑
+        script_dir=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+    else
+        script_dir=$(dirname "${BASH_SOURCE[0]}")
+    fi
+    
+    # 檢查目錄是否存在並可訪問
+    if [ ! -d "$script_dir" ]; then
+        log_error "無法找到腳本目錄: $script_dir"
+        exit 1
+    fi
+    
+    cd "$script_dir" || {
+        log_error "無法切換到腳本目錄: $script_dir"
+        exit 1
+    }
     
     # 解析命令列參數
     local install_vim=false
@@ -570,6 +1253,7 @@ main() {
     local install_all=true
     local check_only=false
     AUTO_INSTALL_DEPS=false  # 全域變數
+    INSTALL_NEOVIM=false     # 強制安裝 neovim 標誌
     
     while [[ $# -gt 0 ]]; do
         case $1 in
@@ -598,6 +1282,10 @@ main() {
                 ;;
             --install-deps)
                 AUTO_INSTALL_DEPS=true
+                shift
+                ;;
+            --install-neovim)
+                INSTALL_NEOVIM=true
                 shift
                 ;;
             --check-only)

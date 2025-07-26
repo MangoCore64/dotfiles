@@ -33,6 +33,12 @@ cd dotfiles
 ./install.sh --vim    # 僅安裝 vim 設定
 ./install.sh --tmux   # 僅安裝 tmux 設定
 ./install.sh --nvim   # 僅安裝 nvim 設定
+
+# 自動安裝相依工具（包含 neovim 和 ripgrep）
+./install.sh --install-deps
+
+# 強制安裝 neovim
+./install.sh --install-neovim
 ```
 
 ### 方法二：手動安裝
@@ -81,14 +87,18 @@ cp -r nvim ~/.config/
 
 ### Neovim 設定特色
 
+- **Framework**: 基於 NvChad v2.5
 - **Plugin Manager**: lazy.nvim
 - **主要功能**:
+  - 智能剪貼簿系統 (<leader>cpr, <leader>cpp)
+  - Claude Code AI 助手整合
+  - LSP 自動安裝與配置 (Mason)
   - 現代化的 UI 組件
-  - LSP 整合
   - 檔案樹導航
-  - 模糊搜尋
+  - 模糊搜尋 (Telescope + ripgrep)
   - 自動會話管理
   - Git 整合
+  - Blink.cmp 高效能補全引擎 (Ctrl-j/k 導航, Ctrl-n 手動觸發)
 
 ## 安裝後步驟
 
@@ -102,22 +112,35 @@ cp -r nvim ~/.config/
 2. 新的設定立即生效
 
 ### Neovim
-1. 開啟 nvim
-2. Lazy.nvim 會自動安裝所需的 plugins
+1. 腳本會自動安裝 neovim (如未安裝)
+2. 開啟 nvim，NvChad 會自動安裝所需的 plugins
 3. 等待安裝完成
+4. 在終端設定中選擇 Nerd Font (如 FiraCode Nerd Font)
+5. 測試功能：
+   - 智能剪貼簿：選取代碼後按 <leader>cpr
+   - Claude Code：按 <leader>cc 開啟 AI 助手
 
 ## 相依性需求
 
 ### 必要工具
 - vim
-- tmux
+- tmux  
 - curl (用於下載 vim-plug)
 
+### 核心工具（自動安裝）
+- **neovim 0.8.0+** (主要編輯器)
+  - 支援包管理器安裝 (brew, apt, yum, dnf, pacman)
+  - 支援 AppImage 安裝 (Linux 無權限時)
+  - 支援源碼編譯安裝 (最後選項)
+- **ripgrep** (NvChad 搜尋功能)
+  - 支援包管理器安裝
+  - 支援預編譯二進制下載
+  - 支援 cargo 安裝
+
 ### 選用工具
-- neovim (如需使用 nvim 設定)
 - git (用於 plugin 管理)
-- ripgrep (用於更好的搜尋體驗)
 - fd (用於更快的檔案搜尋)
+- Nerd Fonts (正確顯示圖示)
 
 ## 故障排除
 
@@ -151,6 +174,18 @@ rm -rf ~/.cache/nvim
 nvim
 ```
 
+### 工具安裝問題
+```bash
+# 檢查安裝狀態
+./install.sh --check-only
+
+# 強制重新安裝 neovim
+./install.sh --install-neovim
+
+# 自動安裝所有缺失工具
+./install.sh --install-deps
+```
+
 ## 自訂設定
 
 如需修改設定，請直接編輯對應的設定檔：
@@ -164,4 +199,6 @@ MIT License
 
 ## 更新記錄
 
+- 2025-07-26: 新增 neovim 和 ripgrep 自動安裝功能，支援多平台和無權限安裝
+- 2025-07-25: 更新 NvChad 配置，新增 Claude Code 和智能剪貼簿功能
 - 2025-07-23: 初始版本，包含 vim、tmux、nvim 設定

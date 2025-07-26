@@ -8,10 +8,47 @@ return {
     opts = require "configs.conform",
   },
 
+  -- Mason: LSP server installer
+  {
+    "williamboman/mason.nvim",
+    tag = "v1.10.0",  -- 鎖定穩定版本
+    opts = {
+      ui = {
+        border = "rounded",
+        icons = {
+          package_installed = "✓",
+          package_pending = "➜",
+          package_uninstalled = "✗"
+        }
+      }
+    },
+  },
+
+  -- Mason LSP Config: Bridge between mason and lspconfig
+  {
+    "williamboman/mason-lspconfig.nvim",
+    tag = "v1.29.0",  -- 鎖定穩定版本
+    dependencies = { "williamboman/mason.nvim" },
+    opts = {
+      ensure_installed = {
+        "html-lsp",
+        "css-lsp", 
+        "json-lsp",
+        "eslint-lsp",
+        "typescript-language-server",
+        "phpactor",
+        "perlnavigator",
+        "volar"
+      },
+      automatic_installation = true,
+    },
+  },
+
   -- These are some examples, uncomment them if you want to see them work!
   {
     "neovim/nvim-lspconfig",
     tag = "v1.2.0",  -- 鎖定穩定版本
+    dependencies = { "williamboman/mason-lspconfig.nvim" },
     config = function()
       require "configs.lspconfig"
     end,
@@ -83,8 +120,24 @@ return {
     end,
   },
 
-  -- test new blink
-  -- { import = "nvchad.blink.lazyspec" },
+  -- Telescope: 覆蓋 NvChad 預設配置以修復 C-j/C-k 導航
+  {
+    "nvim-telescope/telescope.nvim",
+    opts = function()
+      return require "configs.telescope"
+    end,
+  },
+
+  -- Blink.cmp: 使用 NvChad 官方整合
+  { import = "nvchad.blink.lazyspec" },
+  
+  -- Blink.cmp 自定義配置
+  {
+    "saghen/blink.cmp",
+    opts = function()
+      return require "configs.blink"
+    end,
+  },
 
   -- {
   -- 	"nvim-treesitter/nvim-treesitter",
