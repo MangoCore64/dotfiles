@@ -57,22 +57,30 @@ local opts = {
     default = { 'lsp', 'path', 'snippets', 'buffer', 'copilot' },
     providers = {
       lsp = {
+        module = 'blink.cmp.sources.lsp',
         min_keyword_length = 1,
         score_offset = 0,
         timeout_ms = 2000,
       },
       path = {
+        module = 'blink.cmp.sources.path',
         min_keyword_length = 0,  -- 允許空字符開始補全
-        show_hidden_files_by_default = true,
+        opts = {
+          show_hidden_files_by_default = true,
+          get_cwd = function(ctx) return vim.fn.getcwd() end,
+        },
       },
       snippets = {
+        module = 'blink.cmp.sources.snippets',
         min_keyword_length = 2,
       },
       buffer = {
+        module = 'blink.cmp.sources.buffer',
         min_keyword_length = 4,
         max_items = 5,
       },
       cmdline = {
+        module = 'blink.cmp.sources.cmdline',
         min_keyword_length = 0,  -- 允許立即觸發
         max_items = 15,
       },
@@ -81,13 +89,6 @@ local opts = {
         module = "blink-copilot",
         score_offset = 100,  -- 給 Copilot 建議更高優先級
         async = true,
-        transform_items = function(_, items)
-          -- 為 Copilot 建議添加特殊標記
-          for _, item in ipairs(items) do
-            item.kind = require('blink.cmp.types').CompletionItemKind.Copilot
-          end
-          return items
-        end,
       },
     },
   },
