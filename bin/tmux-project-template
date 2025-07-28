@@ -1,0 +1,110 @@
+#!/bin/bash
+# tmux 專案範本腳本生成器
+# 使用方法: ./tmux-project-template <project_name> <project_path>
+# 會在 ~/bin/ 目錄下建立對應的專案腳本
+
+if [ $# -ne 2 ]; then
+    echo "使用方法: $0 <project_name> <project_path>"
+    echo "範例: $0 myapp ~/projects/myapp"
+    echo "範例: $0 webapp ~/dev/webapp"
+    exit 1
+fi
+
+PROJECT_NAME="$1"
+PROJECT_PATH="$2"
+SCRIPT_PATH="$HOME/bin/tmux-$PROJECT_NAME"
+
+# 確保 ~/bin 目錄存在
+mkdir -p "$HOME/bin"
+
+# 生成專案腳本
+cat > "$SCRIPT_PATH" << 'EOF'
+#!/bin/bash
+# Session-Per-Project 標準腳本: PROJECT_NAME 專案
+# 由 tmux-project-template 生成，不納入 dotfiles 版控
+
+SESSION="SESSION_NAME"
+PROJECT_PATH="PROJECT_PATH_VALUE"
+
+# 檢查專案目錄是否存在
+if [ ! -d "$PROJECT_PATH" ]; then
+    echo "專案目錄不存在: $PROJECT_PATH"
+    echo "請先建立專案目錄或修改 PROJECT_PATH 變數"
+    exit 1
+fi
+
+# 檢查是否已在 tmux session 中
+if [ -n "$TMUX" ]; then
+    # 在 tmux 中，直接切換到目標 session
+    tmux switch-client -t $SESSION 2>/dev/null || {
+        echo "Session $SESSION 不存在，建立新 session..."
+        # 從當前 tmux 中建立新 session
+        tmux new-session -d -s $SESSION -c "$PROJECT_PATH"
+        tmux switch-client -t $SESSION
+    }
+else
+    # 不在 tmux 中，檢查 session 是否存在
+    tmux has-session -t $SESSION 2>/dev/null
+    if [ $? != 0 ]; then
+        echo "建立新的 tmux session: $SESSION"
+        
+        # 建立新 session 並設定工作目錄
+        tmux new-session -d -s $SESSION -c "$PROJECT_PATH"
+        
+        # Window 1: Editor (主編輯器) - tmux 預設從 1 開始
+        tmux rename-window -t $SESSION:1 'editor'
+        tmux send-keys -t $SESSION:1 'clear && echo "Welcome to SESSION_NAME project!"' C-m
+        
+        # Window 2: Git (Git 操作專用)
+        tmux new-window -t $SESSION -n 'git' -c "$PROJECT_PATH"
+        tmux send-keys -t $SESSION:git 'clear && git status' C-m
+        
+        # Window 3: Server (開發伺服器/構建工具)
+        tmux new-window -t $SESSION -n 'server' -c "$PROJECT_PATH"
+        tmux send-keys -t $SESSION:server 'clear && echo "Server/Build window ready"' C-m
+        # 取消註解下行來自動啟動開發伺服器，根據專案類型調整命令：
+        # tmux send-keys -t $SESSION:server 'npm run dev' C-m      # Node.js
+        # tmux send-keys -t $SESSION:server 'python manage.py runserver' C-m  # Django
+        # tmux send-keys -t $SESSION:server 'rails server' C-m     # Rails
+        
+        # Window 4: Terminal (一般終端操作)
+        tmux new-window -t $SESSION -n 'term' -c "$PROJECT_PATH"
+        tmux send-keys -t $SESSION:term 'clear' C-m
+        
+        # 等待所有 window 建立完成後再啟動 nvim
+        sleep 0.5
+        tmux send-keys -t $SESSION:editor 'nvim .' C-m
+        
+        # 預設聚焦在 editor window
+        tmux select-window -t $SESSION:editor
+        
+        echo "Session $SESSION 建立完成！"
+        echo "Windows: editor | git | server | term"
+        echo "💡 提示: nvim 會自動載入此目錄的會話 (persistence.nvim)"
+    else
+        echo "連接到現有 session: $SESSION"
+    fi
+    
+    # 連接到 session
+    tmux attach-session -t $SESSION
+fi
+EOF
+
+# 替換範本變數
+sed -i "s/SESSION_NAME/$PROJECT_NAME/g" "$SCRIPT_PATH"
+sed -i "s/PROJECT_NAME/$PROJECT_NAME/g" "$SCRIPT_PATH"
+sed -i "s|PROJECT_PATH_VALUE|$PROJECT_PATH|g" "$SCRIPT_PATH"
+
+# 設定為可執行
+chmod +x "$SCRIPT_PATH"
+
+echo "✅ 專案腳本已建立: $SCRIPT_PATH"
+echo "🚀 使用方法:"
+echo "   $SCRIPT_PATH           # 啟動/連接專案"
+echo "   alias $PROJECT_NAME='$SCRIPT_PATH'  # 建議加到 ~/.bashrc"
+echo ""
+echo "📝 腳本特色:"
+echo "   - 自動建立 4 個 windows: editor/git/server/term"
+echo "   - nvim 會自動載入目錄會話 (persistence.nvim)"
+echo "   - 支援在 tmux 內外啟動"
+echo "   - 不納入 dotfiles 版控 (存放在 ~/bin/)"

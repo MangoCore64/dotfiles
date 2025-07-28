@@ -97,26 +97,39 @@ return {
     end
   },
 
-  -- Auto-Session: Automatic session management
+  -- Persistence: 2024 現代會話管理 (專為 Neovim 設計)
   {
-    'rmagatti/auto-session',
-    config = function()
-      require('auto-session').setup({
-        auto_restore = false,   -- 不自動恢復會話，讓用戶手動選擇
-        suppressed_dirs = { "~/" }, -- 排除主目錄
-        -- 其他有用選項
-        auto_save = true,       -- 自動保存會話
-        auto_create = true,     -- 自動創建會話文件
-      })
-
-      -- Key mappings for session management
-      local map = vim.keymap.set
-      
-      map("n", "<leader>sl", "<cmd>SessionRestore<cr>", { desc = "Restore Session" })
-      map("n", "<leader>ss", "<cmd>SessionSave<cr>", { desc = "Save Session" })
-      map("n", "<leader>sd", "<cmd>SessionDelete<cr>", { desc = "Delete Session" })
-      map("n", "<leader>sS", "<cmd>SessionSearch<cr>", { desc = "Search Sessions" })
-    end,
+    'folke/persistence.nvim',
+    event = "BufReadPre",  -- 提前載入確保會話恢復
+    opts = {
+      dir = vim.fn.expand(vim.fn.stdpath("state") .. "/sessions/"), -- 會話存儲目錄
+      branch = true,  -- 基於 git 分支的獨立會話 (關鍵功能!)
+      need = 1,       -- 至少需要 1 個 buffer 才保存會話
+      -- 不需要手動保存，自動在退出時保存
+    },
+    keys = {
+      -- 簡化的按鍵映射，專注核心功能
+      {
+        "<leader>ps",
+        function() require("persistence").save() end,
+        desc = "Save current session"
+      },
+      {
+        "<leader>pl",
+        function() require("persistence").load() end,
+        desc = "Load session for current directory (and git branch)"
+      },
+      {
+        "<leader>pL",
+        function() require("persistence").load({ last = true }) end,
+        desc = "Load last session"
+      },
+      {
+        "<leader>pd",
+        function() require("persistence").stop() end,
+        desc = "Stop persistence (don't save on exit)"
+      },
+    },
   },
 
   -- Telescope: 覆蓋 NvChad 預設配置以修復 C-j/C-k 導航
