@@ -100,7 +100,6 @@ return {
   -- Auto-Session: Automatic session management
   {
     'rmagatti/auto-session',
-    tag = "v3.2.0",  -- 鎖定穩定版本
     config = function()
       require('auto-session').setup({
         auto_restore = false,   -- 不自動恢復會話，讓用戶手動選擇
