@@ -1112,6 +1112,26 @@ check_dependencies() {
             log_success "ripgrep 已安裝"
         fi
     fi
+    
+    # 檢查 Node.js (GitHub Copilot 必需)
+    log_info "檢查 Node.js (GitHub Copilot 依賴)..."
+    if command -v node &> /dev/null; then
+        local node_version
+        node_version=$(node --version 2>/dev/null | sed 's/v//')
+        local major_version
+        major_version=$(echo "$node_version" | cut -d'.' -f1)
+        
+        if [ -n "$major_version" ] && [ "$major_version" -ge 16 ]; then
+            log_success "Node.js 已安裝：v$node_version (符合 Copilot 要求)"
+        else
+            log_warning "Node.js 版本過舊：v$node_version (Copilot 需要 16.0+)"
+            log_info "請手動安裝 Node.js 16.0+ 以使用 GitHub Copilot 功能"
+        fi
+    else
+        log_warning "Node.js 未安裝 (GitHub Copilot 功能需要)"
+        log_info "請安裝 Node.js 16.0+ 以使用 AI 智慧補全功能"
+        log_info "安裝方式：https://nodejs.org/ 或使用包管理器"
+    fi
 }
 
 # 安裝 vim 設定
@@ -1597,8 +1617,14 @@ main() {
     if command -v nvim &> /dev/null; then
         echo "4. 在終端機設定中選擇 Nerd Font (如 FiraCode Nerd Font)"
         echo "5. 開啟 nvim，NvChad 會自動安裝所有 plugins"
-        echo "6. 測試智能剪貼簿：選取代碼後按 <leader>cpr"
-        echo "7. 測試 Claude Code：按 <leader>cc 開啟 AI 助手"
+        echo "6. GitHub Copilot 設定："
+        echo "   - 執行 <leader>coa 進行 GitHub 認證登入"
+        echo "   - 使用 <leader>cos 檢查 Copilot 狀態"
+        echo "   - 使用 <leader>coe/<leader>cod 啟用/停用 Copilot"
+        echo "7. 測試功能："
+        echo "   - 智能剪貼簿：選取代碼後按 <leader>cpr"
+        echo "   - Claude Code：按 <leader>cc 開啟 AI 助手"
+        echo "   - GitHub Copilot：編輯程式碼時自動顯示 AI 建議"
         echo "8. 參考 ~/dotfiles/nvim/CLAUDE.md 了解完整功能"
     fi
 }

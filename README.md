@@ -100,6 +100,7 @@ cp -r nvim ~/.config/
 - **主要功能**:
   - 智能剪貼簿系統 (<leader>cpr, <leader>cpp)
   - Claude Code AI 助手整合
+  - **GitHub Copilot AI 智慧補全** (完美整合 blink.cmp)
   - LSP 自動安裝與配置 (Mason)
   - 現代化的 UI 組件
   - 檔案樹導航
@@ -107,6 +108,16 @@ cp -r nvim ~/.config/
   - 自動會話管理
   - Git 整合
   - Blink.cmp 高效能補全引擎 (Ctrl-j/k 導航, Ctrl-n 手動觸發)
+
+- **AI 輔助功能**:
+  - **GitHub Copilot 整合**: 即時 AI 程式碼建議，與 blink.cmp 無縫整合
+  - **Copilot 管理命令**: 
+    - `<leader>coa` - GitHub 認證登入
+    - `<leader>cos` - 檢查 Copilot 狀態
+    - `<leader>coe` - 啟用 Copilot
+    - `<leader>cod` - 停用 Copilot
+    - `<leader>cor` - 重啟 Copilot 服務
+  - **智慧補全體驗**: Copilot 建議顯示在 blink.cmp 選單中，支援高優先級顯示
 
 ## 安裝後步驟
 
@@ -124,9 +135,14 @@ cp -r nvim ~/.config/
 2. 開啟 nvim，NvChad 會自動安裝所需的 plugins
 3. 等待安裝完成
 4. 在終端設定中選擇 Nerd Font (如 FiraCode Nerd Font)
-5. 測試功能：
-   - 智能剪貼簿：選取代碼後按 <leader>cpr
-   - Claude Code：按 <leader>cc 開啟 AI 助手
+5. **GitHub Copilot 設定** (需要 Node.js 16.0+)：
+   - 執行 `<leader>coa` 進行 GitHub 認證登入
+   - 按照提示完成瀏覽器認證流程
+   - 使用 `<leader>cos` 確認 Copilot 狀態為已啟用
+6. 測試功能：
+   - 智能剪貼簿：選取代碼後按 `<leader>cpr`
+   - Claude Code：按 `<leader>cc` 開啟 AI 助手
+   - **GitHub Copilot**：編輯程式碼時自動顯示 AI 建議
 
 ## 相依性需求
 
@@ -144,10 +160,19 @@ cp -r nvim ~/.config/
   - 支援包管理器安裝
   - 支援預編譯二進制下載
   - 支援 cargo 安裝
+- **Node.js 16.0+** (GitHub Copilot 必需)
+  - 用於執行 GitHub Copilot AI 服務
+  - 安裝方式：https://nodejs.org/ 或包管理器
+  - 安裝腳本會自動檢測並提示安裝
 - **Nerd Fonts** (圖示顯示)
   - 自動檢測系統字體目錄
   - 智能選擇字體安裝方式
   - 支援 macOS 和 Linux 平台
+
+### AI 功能需求
+- **GitHub 帳號** (Copilot 認證)
+- **網路連線** (AI 服務通訊)
+- **GitHub Copilot 訂閱** (付費服務，學生免費)
 
 ### 選用工具
 - git (用於 plugin 管理)
@@ -201,6 +226,28 @@ nvim
 ./install.sh --install-fonts
 ```
 
+### GitHub Copilot 問題
+```bash
+# 檢查 Copilot 狀態
+# 在 nvim 中執行
+<leader>cos
+
+# Copilot 認證問題
+<leader>coa  # 重新進行 GitHub 認證
+
+# 檢查 Node.js 版本
+node --version  # 需要 16.0+
+
+# 重啟 Copilot 服務
+<leader>cor
+
+# 如果 Copilot 建議不出現
+<leader>coe  # 確保 Copilot 已啟用
+
+# 檢查網路連線
+curl -s https://api.github.com/user  # 測試 GitHub API 連線
+```
+
 ## 自訂設定
 
 如需修改設定，請直接編輯對應的設定檔：
@@ -214,6 +261,13 @@ MIT License
 
 ## 更新記錄
 
+- 2025-07-28:
+  - **重大更新：GitHub Copilot 與 blink.cmp 完美整合**
+  - 新增 GitHub Copilot AI 智慧補全功能，與 blink.cmp 無縫整合
+  - 修正 blink.cmp 配置結構錯誤，解決 "Unexpected field" 問題
+  - 新增 Copilot 管理按鍵映射：認證、狀態檢查、啟用/停用等
+  - 更新安裝腳本：加入 Node.js 依賴檢查和 Copilot 設定指引
+  - 完善文檔：新增 AI 功能說明、故障排除和使用指引
 - 2025-07-27: 
   - 強化安裝腳本安全性：URL 驗證、檔案完整性檢查、錯誤處理優化
   - 更新 NvChad blink.cmp 配置與文檔同步
