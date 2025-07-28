@@ -15,3 +15,6 @@ o.timeoutlen = 500   -- Time to wait for a mapped sequence to complete (ms)
 o.ttimeoutlen = 10   -- Time to wait for a key code sequence to complete (ms)
 
 -- o.cursorlineopt ='both' -- to enable cursorline!
+
+-- Session options for persistence.nvim - 只保存實際的檔案 buffer
+o.sessionoptions = "buffers,curdir,folds,tabpages,winsize,winpos"

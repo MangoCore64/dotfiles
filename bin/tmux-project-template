@@ -73,7 +73,7 @@ else
         
         # 等待所有 window 建立完成後再啟動 nvim
         sleep 0.5
-        tmux send-keys -t $SESSION:editor 'nvim .' C-m
+        tmux send-keys -t $SESSION:editor 'nvim' C-m
         
         # 預設聚焦在 editor window
         tmux select-window -t $SESSION:editor
