@@ -61,7 +61,8 @@ local opts = {
         timeout_ms = 2000,
       },
       path = {
-        min_keyword_length = 3,
+        min_keyword_length = 0,  -- 允許空字符開始補全
+        show_hidden_files_by_default = true,
       },
       snippets = {
         min_keyword_length = 2,
@@ -70,12 +71,27 @@ local opts = {
         min_keyword_length = 4,
         max_items = 5,
       },
+      cmdline = {
+        min_keyword_length = 0,  -- 允許立即觸發
+        max_items = 15,
+      },
     },
   },
 
-  -- 命令列補全設定（暫時禁用以避免 TreeSitter 衝突）
+  -- 命令列補全設定
   cmdline = {
-    enabled = false,
+    enabled = true,
+    keymap = {
+      preset = 'default',
+      ['<Tab>'] = { 'show', 'accept' },
+      ['<S-Tab>'] = { 'select_prev', 'fallback' },
+      ['<C-j>'] = { 'select_next', 'fallback' },
+      ['<C-k>'] = { 'select_prev', 'fallback' },
+    },
+    sources = { 'path', 'cmdline' },
+    completion = {
+      menu = { auto_show = true },
+    },
   },
 
   -- 補全窗口設定：NvChad 風格
@@ -85,15 +101,14 @@ local opts = {
     },
     menu = {
       border = 'single',  -- 使用單線邊框與 NvChad 一致
+      winhighlight = 'Normal:BlinkCmpMenu,FloatBorder:BlinkCmpMenuBorder,CursorLine:BlinkCmpMenuSelection,Search:None',
       scrolloff = 2,
       scrollbar = true,
-      window = {
-        winhighlight = 'Normal:BlinkCmpMenu,FloatBorder:BlinkCmpMenuBorder,CursorLine:BlinkCmpMenuSelection,Search:None',
-      },
     },
     documentation = {
       auto_show = true,
       auto_show_delay_ms = 500,
+      treesitter_highlighting = false,  -- 禁用 treesitter 避免 cmdline 錯誤
       window = {
         border = 'single',
         winhighlight = 'Normal:BlinkCmpDoc,FloatBorder:BlinkCmpDocBorder,EndOfBuffer:BlinkCmpDoc',
