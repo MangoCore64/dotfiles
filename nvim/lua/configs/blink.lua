@@ -73,9 +73,9 @@ local opts = {
     },
   },
 
-  -- 命令列補全設定
+  -- 命令列補全設定（暫時禁用以避免 TreeSitter 衝突）
   cmdline = {
-    sources = {},
+    enabled = false,
   },
 
   -- 補全窗口設定：NvChad 風格
@@ -85,9 +85,11 @@ local opts = {
     },
     menu = {
       border = 'single',  -- 使用單線邊框與 NvChad 一致
-      winhighlight = 'Normal:BlinkCmpMenu,FloatBorder:BlinkCmpMenuBorder,CursorLine:BlinkCmpMenuSelection,Search:None',
       scrolloff = 2,
       scrollbar = true,
+      window = {
+        winhighlight = 'Normal:BlinkCmpMenu,FloatBorder:BlinkCmpMenuBorder,CursorLine:BlinkCmpMenuSelection,Search:None',
+      },
     },
     documentation = {
       auto_show = true,
