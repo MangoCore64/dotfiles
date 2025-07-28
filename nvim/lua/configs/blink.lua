@@ -48,12 +48,13 @@ local opts = {
       Event = '',
       Operator = '󰆕',
       TypeParameter = '',
+      Copilot = '',  -- GitHub Copilot AI 建議圖示
     },
   },
 
   -- 來源配置：使用官方推薦的預設來源並自定義提供者設定
   sources = {
-    default = { 'lsp', 'path', 'snippets', 'buffer' },
+    default = { 'lsp', 'path', 'snippets', 'buffer', 'copilot' },
     providers = {
       lsp = {
         min_keyword_length = 1,
@@ -74,6 +75,19 @@ local opts = {
       cmdline = {
         min_keyword_length = 0,  -- 允許立即觸發
         max_items = 15,
+      },
+      copilot = {
+        name = "copilot",
+        module = "blink-copilot",
+        score_offset = 100,  -- 給 Copilot 建議更高優先級
+        async = true,
+        transform_items = function(_, items)
+          -- 為 Copilot 建議添加特殊標記
+          for _, item in ipairs(items) do
+            item.kind = require('blink.cmp.types').CompletionItemKind.Copilot
+          end
+          return items
+        end,
       },
     },
   },

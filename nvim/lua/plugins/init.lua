@@ -131,6 +131,38 @@ return {
   -- Blink.cmp: 使用 NvChad 官方整合
   { import = "nvchad.blink.lazyspec" },
   
+  -- GitHub Copilot: AI 程式碼建議
+  {
+    "zbirenbaum/copilot.lua",
+    cmd = "Copilot",
+    event = "InsertEnter",
+    config = function()
+      require("copilot").setup({
+        -- 停用預設 suggestion 讓 blink.cmp 處理
+        suggestion = { enabled = false },
+        -- 停用預設 panel 讓 blink.cmp 處理
+        panel = { enabled = false },
+        -- Copilot 設定
+        copilot_node_command = 'node', -- Node.js 路徑
+        server_opts_overrides = {},
+      })
+    end,
+  },
+
+  -- Blink-Copilot: blink.cmp 與 Copilot 整合
+  {
+    "fang2hou/blink-copilot",
+    dependencies = { "zbirenbaum/copilot.lua", "saghen/blink.cmp" },
+    event = "InsertEnter",
+    config = function()
+      require("blink-copilot").setup({
+        -- 基本配置參數
+        trigger = "manual",  -- 手動觸發 copilot 建議
+        accept = "tab",      -- 使用 Tab 接受建議
+      })
+    end,
+  },
+
   -- Blink.cmp 自定義配置
   {
     "saghen/blink.cmp",

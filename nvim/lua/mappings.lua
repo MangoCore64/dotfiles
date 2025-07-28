@@ -40,5 +40,24 @@ map("v", "<leader>cpf", clipboard.copy_to_file_only, { desc = "Save selection to
 map("n", "<leader>cps", clipboard.copy_next_segment, { desc = "Copy next segment (after segmented copy)" })
 map("n", "<leader>cd", clipboard.diagnose_clipboard, { desc = "Diagnose clipboard support" })
 
+-- ============================================================================
+-- GitHub Copilot 按鍵映射
+-- ============================================================================
+-- 
+-- 🤖 Copilot 管理命令：
+-- <leader>cos  - 檢查 Copilot 狀態
+-- <leader>coe  - 啟用 Copilot
+-- <leader>cod  - 停用 Copilot
+-- <leader>coa  - Copilot 認證
+-- <leader>cor  - 重啟 Copilot
+-- ============================================================================
+
+-- Copilot 管理命令
+map("n", "<leader>cos", "<cmd>Copilot status<cr>", { desc = "Copilot status" })
+map("n", "<leader>coe", "<cmd>Copilot enable<cr>", { desc = "Enable Copilot" })
+map("n", "<leader>cod", "<cmd>Copilot disable<cr>", { desc = "Disable Copilot" })
+map("n", "<leader>coa", "<cmd>Copilot auth<cr>", { desc = "Copilot authentication" })
+map("n", "<leader>cor", "<cmd>Copilot restart<cr>", { desc = "Restart Copilot" })
+
 -- 其他原有快捷鍵保留
 -- map({ "n", "i", "v" }, "<C-s>", "<cmd> w <cr>")
