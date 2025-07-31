@@ -80,7 +80,7 @@ return {
       -- 延遲註冊按鍵映射，確保命令已註冊
       vim.defer_fn(function()
         local map = vim.keymap.set
-        local terminal_manager = require('utils.terminal-manager-v2')
+        local terminal_manager = require('utils.terminal-manager')
         
         -- 主要切換按鍵 (智能檢測版本)
         map('n', '<leader>cc', function()
@@ -165,7 +165,7 @@ return {
       -- 設定我們自己的按鍵映射
       vim.defer_fn(function()
         local map = vim.keymap.set
-        local terminal_manager = require('utils.terminal-manager-v2')
+        local terminal_manager = require('utils.terminal-manager')
         
         -- 主要切換按鍵（使用新的管理器）
         map('n', '<leader>og', function()
@@ -337,13 +337,31 @@ return {
     end,
   },
 
-  -- {
-  -- 	"nvim-treesitter/nvim-treesitter",
-  -- 	opts = {
-  -- 		ensure_installed = {
-  -- 			"vim", "lua", "vimdoc",
-  --      "html", "css"
-  -- 		},
-  -- 	},
-  -- },
+  {
+    "nvim-treesitter/nvim-treesitter",
+    opts = {
+      ensure_installed = {
+        -- 核心開發語言
+        "perl", "php", "phpdoc",
+        "html", "css", "javascript", "typescript",
+        "vue",
+        
+        -- 配置檔案
+        "json", "yaml", "sql", "markdown",
+        
+        -- Git 與版本控制
+        "git_config", "git_rebase", "gitcommit", "gitignore",
+        
+        -- Shell 與系統
+        "bash", "tmux",
+        
+        -- Neovim 配置
+        "vim", "vimdoc", "lua"
+      },
+      auto_install = true,
+      highlight = { enable = true },
+      indent = { enable = true },
+      incremental_selection = { enable = true },
+    },
+  },
 }
