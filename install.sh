@@ -1226,6 +1226,47 @@ install_tmux() {
     log_info "請重啟 tmux 或執行 'tmux source-file ~/.tmux.conf' 來套用新設定"
 }
 
+# 安裝 Claude Code 配置
+install_claude_config() {
+    log_info "安裝 Claude Code 配置..."
+    
+    # 檢查配置目錄是否存在
+    if [ ! -d ".claude" ]; then
+        log_warning "找不到 .claude 配置目錄，跳過 Claude Code 配置"
+        return 0
+    fi
+    
+    # 創建目標目錄
+    mkdir -p "$HOME/.claude"
+    
+    # 備份現有 Claude Code 配置
+    if [ -d "$HOME/.claude/agents" ]; then
+        log_info "發現現有的 Claude Code 配置，將進行備份"
+        if ! backup_file "$HOME/.claude/agents"; then
+            log_warning "無法備份現有的 Claude Code 配置，將覆蓋安裝"
+        fi
+    fi
+    
+    # 複製 Claude Code 配置
+    cp -r .claude/* "$HOME/.claude/"
+    
+    # 設定安全權限
+    find "$HOME/.claude" -type f -exec chmod 644 {} \;
+    find "$HOME/.claude" -type d -exec chmod 755 {} \;
+    
+    # 統計安裝的 sub agent 數量
+    local agent_count=$(find "$HOME/.claude/agents" -name "*.md" -type f 2>/dev/null | wc -l)
+    
+    log_success "Claude Code 配置安裝完成"
+    log_info "已安裝 $agent_count 個專業 sub agent："
+    echo "  - Development: frontend-developer, backend-specialist, php-expert, perl-expert"
+    echo "  - Infrastructure: database-specialist, devops-sre-specialist, security-expert"
+    echo "  - AI Tools: prompt-engineer, agent-orchestration-expert"
+    echo "  - Specialized: vim-neovim-expert, search-tech-specialist"
+    echo "  - System: debugger, code-reviewer, test-runner, dx-optimizer, meta-agent"
+    log_info "這些 sub agent 會在使用 Claude Code 時自動啟用"
+}
+
 # 安裝 Nerd Fonts (NvChad 必需)
 install_nerd_fonts() {
     log_info "檢查 Nerd Fonts..."
@@ -1593,6 +1634,7 @@ main() {
         install_vim
         install_tmux
         install_nvim
+        install_claude_config
     else
         if $install_vim; then
             install_vim
@@ -1603,6 +1645,8 @@ main() {
         if $install_nvim_flag; then
             install_nvim
         fi
+        # Claude Code 配置始終安裝（如果存在）
+        install_claude_config
     fi
     
     # 驗證安裝

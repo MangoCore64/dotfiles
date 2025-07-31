@@ -12,6 +12,8 @@ This is a personal dotfiles repository containing configuration files for vim, t
 .
 ├── .vimrc              # Vim configuration with vim-plug and AI plugins
 ├── .tmux.conf          # Tmux configuration with Ctrl-a prefix
+├── .claude/            # Claude Code configuration directory
+│   └── agents/         # Specialized sub-agents for different domains
 ├── nvim/               # Neovim configuration (NvChad-based)
 │   ├── init.lua        # NvChad bootstrap entry point
 │   ├── lazy-lock.json  # Plugin version lockfile
@@ -91,6 +93,40 @@ This is a personal dotfiles repository containing configuration files for vim, t
 - Use descriptive commit messages in Chinese (traditional/simplified)
 - Focus on the specific change rather than generic descriptions
 - Standard format: `修正/新增/更新 [component] [description]`
+
+## Claude Code Sub-Agents
+
+This repository includes specialized sub-agents configured for different development domains. These agents are automatically available when using Claude Code and provide expert-level assistance:
+
+### Development Technology Stack
+- **frontend-developer**: React/Vue/Angular, CSS frameworks, responsive design, state management
+- **backend-specialist**: Node.js/Python/Go/Java, API design, microservices, cloud infrastructure  
+- **php-expert**: Laravel/Symfony, modern PHP 8.0+, legacy modernization, security practices
+- **perl-expert**: Modern Perl development, bioinformatics, system administration, text processing
+
+### Infrastructure & Security
+- **database-specialist**: PostgreSQL/MySQL/MongoDB, performance optimization, migrations, high availability
+- **devops-sre-specialist**: CI/CD, Docker/Kubernetes, Infrastructure as Code, monitoring, incident response
+- **security-expert**: Application security, penetration testing, OWASP compliance, threat modeling
+
+### AI & Specialized Tools  
+- **prompt-engineer**: AI prompt optimization, LLM interactions, advanced prompting techniques
+- **agent-orchestration-expert**: Multi-agent systems, workflow orchestration, distributed AI architectures
+- **vim-neovim-expert**: Vim/Neovim configuration, plugin management, advanced editing techniques
+- **search-tech-specialist**: Elasticsearch/Solr, search relevance, vector search, analytics
+
+### System Built-in Agents
+- **debugger**: Error diagnosis and troubleshooting
+- **code-reviewer**: Code quality and security review  
+- **test-runner**: Testing automation and analysis
+- **dx-optimizer**: Developer experience improvements
+- **meta-agent**: Creating new sub-agent configurations
+
+### Usage
+These agents are automatically invoked based on context, or you can explicitly request them:
+- "Use the frontend-developer to optimize this React component"
+- "Ask the security-expert to review this authentication code"
+- "Have the database-specialist design this schema"
 
 ## NvChad Best Practices
 
