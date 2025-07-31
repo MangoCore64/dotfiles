@@ -98,6 +98,7 @@ cp -r nvim ~/.config/
 - **Framework**: 基於 NvChad v2.5
 - **Plugin Manager**: lazy.nvim
 - **主要功能**:
+  - **智能終端管理系統** (Claude Code + Gemini AI 雙終端支援)
   - 智能剪貼簿系統 (<leader>cpr, <leader>cpp)
   - Claude Code AI 助手整合
   - **GitHub Copilot AI 智慧補全** (完美整合 blink.cmp)
@@ -110,6 +111,11 @@ cp -r nvim ~/.config/
   - Blink.cmp 高效能補全引擎 (Ctrl-j/k 導航, Ctrl-n 手動觸發)
 
 - **AI 輔助功能**:
+  - **智能終端管理**: Claude Code 與 Gemini AI 雙終端整合
+    - `<leader>cc` - 切換 Claude Code 終端
+    - `<leader>og` / `<leader>gm` - 切換 Gemini AI 終端
+    - `<leader>tt` - 在 Claude Code 和 Gemini 間切換
+    - `<C-q>` - 在終端模式下智能關閉當前終端
   - **GitHub Copilot 整合**: 即時 AI 程式碼建議，與 blink.cmp 無縫整合
   - **Copilot 管理命令**: 
     - `<leader>coa` - GitHub 認證登入
@@ -140,8 +146,8 @@ cp -r nvim ~/.config/
    - 按照提示完成瀏覽器認證流程
    - 使用 `<leader>cos` 確認 Copilot 狀態為已啟用
 6. 測試功能：
+   - **智能終端管理**：按 `<leader>cc` 開啟 Claude Code，按 `<leader>og` 開啟 Gemini AI
    - 智能剪貼簿：選取代碼後按 `<leader>cpr`
-   - Claude Code：按 `<leader>cc` 開啟 AI 助手
    - **GitHub Copilot**：編輯程式碼時自動顯示 AI 建議
 
 ## 相依性需求
@@ -261,6 +267,13 @@ MIT License
 
 ## 更新記錄
 
+- 2025-07-31:
+  - **智能終端管理系統完整實現**
+  - 新增 Claude Code 與 Gemini AI 雙終端支援，支援智能切換
+  - 實現終端狀態檢測與同步，修復 buffer 重用問題
+  - 新增終端按鍵映射：`<leader>cc`, `<leader>og`, `<leader>tt`, `<C-q>`
+  - 修復 Gemini 終端的狀態同步和關閉邏輯
+  - 清理調試文檔，保留核心配置文件
 - 2025-07-28:
   - **重大更新：GitHub Copilot 與 blink.cmp 完美整合**
   - 新增 GitHub Copilot AI 智慧補全功能，與 blink.cmp 無縫整合

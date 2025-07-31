@@ -80,20 +80,117 @@ return {
       -- 延遲註冊按鍵映射，確保命令已註冊
       vim.defer_fn(function()
         local map = vim.keymap.set
+        local terminal_manager = require('utils.terminal-manager-v2')
         
-        -- 主要切換按鍵 (替代官方的 <C-,>)
-        map('n', '<leader>cc', '<cmd>ClaudeCode<CR>', { desc = 'Toggle Claude Code terminal' })
-        map('t', '<leader>cc', '<cmd>ClaudeCode<CR>', { desc = 'Toggle Claude Code terminal' })
+        -- 主要切換按鍵 (智能檢測版本)
+        map('n', '<leader>cc', function()
+          terminal_manager.toggle_claude_code()
+        end, { desc = 'Toggle Claude Code (smart detection)' })
+        
+        -- 終端模式支援 - 使用逃脫序列
+        map('t', '<leader>cc', function()
+          vim.cmd('stopinsert')
+          terminal_manager.toggle_claude_code()
+        end, { desc = 'Toggle Claude Code from terminal mode' })
         
         -- 快速開啟按鍵
-        map('n', '<leader>ai', '<cmd>ClaudeCode<CR>', { desc = 'Open Claude Code AI assistant' })
+        map('n', '<leader>ai', function()
+          terminal_manager.toggle_claude_code()
+        end, { desc = 'Open Claude Code AI assistant' })
         
         -- 備用按鍵
-        map('n', '<F12>', '<cmd>ClaudeCode<CR>', { desc = 'Claude Code (F12)' })
+        map('n', '<F12>', function()
+          terminal_manager.toggle_claude_code()
+        end, { desc = 'Claude Code (F12)' })
         
-        -- 如果你想要模仿官方的逗號概念
-        map('n', '<leader>,', '<cmd>ClaudeCode<CR>', { desc = 'Claude Code (comma alternative)' })
+        -- 終端之間切換 (核心功能)
+        map('n', '<leader>tt', function()
+          terminal_manager.switch_terminal()
+        end, { desc = 'Switch between Claude Code and Gemini' })
+        
+        -- 終端模式下的切換支援
+        map('t', '<leader>tt', function()
+          vim.cmd('stopinsert')
+          terminal_manager.switch_terminal()
+        end, { desc = 'Switch terminals from terminal mode' })
+        
+        -- 使用 Ctrl+Q 隱藏當前終端
+        map('t', '<C-q>', function()
+          vim.cmd('stopinsert')
+          -- 智能檢測當前終端並關閉
+          local status = terminal_manager.get_status()
+          
+          -- 優先檢查是否在當前視窗
+          if status.claude_code.active and status.claude_code.is_current then
+            terminal_manager.toggle_claude_code()
+          elseif status.gemini.active then
+            -- 檢查當前 buffer 是否為 gemini
+            local current_buf = vim.api.nvim_get_current_buf()
+            if current_buf == status.gemini.buf then
+              terminal_manager.toggle_gemini()
+            else
+              terminal_manager.toggle_claude_code() -- 預設嘗試關閉 Claude Code
+            end
+          else
+            terminal_manager.toggle_claude_code() -- 預設嘗試關閉 Claude Code
+          end
+        end, { desc = 'Hide current terminal' })
+        
+        -- 狀態管理功能
+        map('n', '<leader>ts', function()
+          local status = terminal_manager.get_status()
+          print(vim.inspect(status))
+        end, { desc = 'Terminal status check' })
+        
+        map('n', '<leader>tr', function()
+          terminal_manager.fix_state()
+        end, { desc = 'Reset and fix terminal state' })
       end, 100) -- 100ms 延遲確保命令已註冊
+    end
+  },
+
+  -- Gemini CLI Integration
+  {
+    "JonRoosevelt/gemini.nvim",
+    lazy = false,
+    config = function()
+      -- 基本設定，但不使用其內建的 toggle 功能
+      require("gemini").setup({
+        -- 禁用內建按鍵映射
+        keymaps = {
+          toggle = false,
+        }
+      })
+      
+      -- 設定我們自己的按鍵映射
+      vim.defer_fn(function()
+        local map = vim.keymap.set
+        local terminal_manager = require('utils.terminal-manager-v2')
+        
+        -- 主要切換按鍵（使用新的管理器）
+        map('n', '<leader>og', function()
+          terminal_manager.toggle_gemini()
+        end, { desc = 'Toggle Gemini CLI (smart detection)' })
+        
+        -- 終端模式支援
+        map('t', '<leader>og', function()
+          vim.cmd('stopinsert')
+          terminal_manager.toggle_gemini()
+        end, { desc = 'Toggle Gemini from terminal mode' })
+        
+        -- 備用按鍵
+        map('n', '<leader>gm', function()
+          terminal_manager.toggle_gemini()
+        end, { desc = 'Toggle Gemini CLI' })
+        
+        -- 兼容 Shift+F12 作為 Gemini 的快捷鍵
+        map('n', '<S-F12>', function()
+          terminal_manager.toggle_gemini()
+        end, { desc = 'Gemini CLI (Shift+F12)' })
+        
+        -- 保留發送選取文字到 Gemini 的功能
+        map('v', '<leader>sg', '<cmd>lua require("gemini").send_to_gemini()<CR>', { desc = 'Send selection to Gemini' })
+      end, 100)
     end
   },
 
