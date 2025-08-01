@@ -2,6 +2,7 @@
 -- 支援 OSC 52、分段處理、文件引用等功能
 
 local M = {}
+local error_handler = require('utils.error-handler')
 
 -- 支援函數：獲取視覺選擇
 local function get_visual_selection()
@@ -96,8 +97,10 @@ end
 
 -- 全域設定
 local M_config = {
-    enable_osc52 = true,  -- 設為 false 可禁用 OSC 52 以提高安全性
-    security_check = true -- 啟用敏感內容檢查
+    enable_osc52 = false, -- 預設禁用 OSC 52 以提高安全性，需要時可手動啟用
+    security_check = true, -- 啟用敏感內容檢查
+    max_osc52_size = 32768, -- OSC 52 最大內容大小限制 (32KB)
+    strict_validation = true -- 啟用嚴格的內容驗證
 }
 
 -- 內容處理選項
@@ -147,54 +150,120 @@ local function copy_to_clipboard(content)
                 return false
             end
             
-            -- 安全警告：檢查內容是否可能包含敏感資訊
+            -- 增強的敏感內容檢測
             if M_config.security_check then
+                local sensitive_patterns = {
+                    -- API Keys 和 Tokens
+                    "sk%-[a-zA-Z0-9]{48}",      -- OpenAI API keys
+                    "ghp_[a-zA-Z0-9]{36}",      -- GitHub tokens
+                    "AKIA[0-9A-Z]{16}",         -- AWS access keys
+                    "xoxb%-[0-9]{10,13}%-[0-9]{10,13}%-[a-zA-Z0-9]{24}", -- Slack tokens
+                    
+                    -- Database credentials
+                    "postgres://[^:]+:[^@]+@",
+                    "mysql://[^:]+:[^@]+@",
+                    "mongodb://[^:]+:[^@]+@",
+                    
+                    -- 一般密碼和密鑰模式
+                    "password%s*[=:]%s*['\"][^'\"]+['\"]",
+                    "secret%s*[=:]%s*['\"][^'\"]+['\"]",
+                    "token%s*[=:]%s*['\"][^'\"]+['\"]",
+                    "api_?key%s*[=:]%s*['\"][^'\"]+['\"]",
+                    "auth%s*[=:]%s*['\"][^'\"]+['\"]",
+                    
+                    -- 簡單關鍵字（向後兼容）
+                    "password", "secret", "token", "key", "api_key", "auth"
+                }
+                
                 local content_lower = content:lower()
-                if content_lower:match("password") or content_lower:match("secret") or 
-                   content_lower:match("token") or content_lower:match("key") or
-                   content_lower:match("api_key") or content_lower:match("auth") then
-                    vim.notify("⚠️  警告：內容可能包含敏感資訊，OSC 52 將透過終端傳輸", vim.log.levels.WARN)
-                    vim.notify("如有疑慮請使用本地剪貼板工具", vim.log.levels.INFO)
-                    -- 對於敏感內容，跳過 OSC 52
-                    return false
+                for _, pattern in ipairs(sensitive_patterns) do
+                    if content_lower:match(pattern) then
+                        error_handler.security_error("敏感內容檢測到，OSC 52 傳輸已阻止", {
+                            pattern = pattern,
+                            content_preview = content:sub(1, 50) .. "..."
+                        })
+                        -- 對於敏感內容，完全拒絕 OSC 52
+                        return false
+                    end
                 end
             end
             
-            -- 檢查內容大小限制 (大多數終端限制約 100KB)
-            if #content > 100000 then
-                vim.notify("Content too large for OSC 52 (" .. #content .. " bytes)", vim.log.levels.WARN)
+            -- 檢查內容大小限制
+            if #content > M_config.max_osc52_size then
+                vim.notify(string.format("Content too large for OSC 52 (%d bytes, max %d)", 
+                    #content, M_config.max_osc52_size), vim.log.levels.WARN)
                 return false
             end
             
             local base64_content = vim.base64.encode(content)
             
-            -- 安全性：驗證 base64 內容只包含有效字符
+            -- 增強的 base64 安全驗證
             local function sanitize_base64(b64_content)
-                -- 僅保留 base64 有效字符：A-Z, a-z, 0-9, +, /, =
-                return b64_content:gsub('[^A-Za-z0-9+/=]', '')
+                -- 移除任何潛在的控制序列和危險字符
+                b64_content = b64_content:gsub('[\027\007\008\010\013\012]', '') -- 移除控制字符
+                
+                -- 嚴格驗證 base64 字符集
+                if not b64_content:match('^[A-Za-z0-9+/=]*$') then
+                    vim.notify("🚫 安全錯誤：Base64 內容包含非法字符", vim.log.levels.ERROR)
+                    return nil
+                end
+                
+                -- 額外檢查：防止過長的序列（可能的緩衝區溢出攻擊）
+                if #b64_content > (M_config.max_osc52_size * 1.5) then -- base64 編碼約增加 33%
+                    vim.notify("🚫 安全錯誤：Base64 編碼後內容過大", vim.log.levels.ERROR)
+                    return nil
+                end
+                
+                return b64_content
             end
             
             base64_content = sanitize_base64(base64_content)
+            if not base64_content then
+                return false
+            end
             
             local term_program = os.getenv('TERM_PROGRAM') or ''
             local tmux = os.getenv('TMUX') or ''
             
-            -- 檢查終端是否支援 OSC 52
-            if term_program ~= 'iTerm.app' and term_program ~= 'Apple_Terminal' and not term_program:match('tmux') then
+            -- 檢查終端是否支援 OSC 52（更嚴格的檢查）
+            local supported_terminals = {
+                'iTerm.app', 'Apple_Terminal', 'tmux', 'screen',
+                'alacritty', 'wezterm', 'kitty'
+            }
+            
+            local terminal_supported = false
+            for _, supported in ipairs(supported_terminals) do
+                if term_program == supported or term_program:match(supported) then
+                    terminal_supported = true
+                    break
+                end
+            end
+            
+            if not terminal_supported then
+                vim.notify("⚠️  終端可能不支援 OSC 52: " .. term_program, vim.log.levels.WARN)
                 return false
             end
             
-            -- 選擇最佳 OSC 序列
-            local osc_seq = '\027]52;c;' .. base64_content .. '\027\\'
+            -- 安全的 OSC 序列構建
+            local osc_seq = string.format('\027]52;c;%s\027\\', base64_content)
             
-            -- TMUX 包裝
+            -- TMUX 安全包裝
             if tmux ~= '' then
-                osc_seq = '\027Ptmux;\027' .. osc_seq:gsub('\027', '\027\027') .. '\027\\'
+                -- 對 ESC 序列進行雙重轉義
+                local escaped_seq = osc_seq:gsub('\027', '\027\027')
+                osc_seq = '\027Ptmux;\027' .. escaped_seq .. '\027\\'
             end
             
-            -- 發送序列並等待
-            io.write(osc_seq)
-            io.flush()
+            -- 安全發送序列
+            local success, err = pcall(function()
+                io.write(osc_seq)
+                io.flush()
+            end)
+            
+            if not success then
+                vim.notify("🚫 OSC 52 發送失敗: " .. tostring(err), vim.log.levels.ERROR)
+                return false
+            end
             
             -- 等待終端處理
             vim.wait(100)
@@ -202,31 +271,77 @@ local function copy_to_clipboard(content)
             return true
         end
         
-        -- 傳統剪貼板方法
+        -- 安全的系統剪貼板方法
         local function try_system_clipboard()
             local os_name = vim.loop.os_uname().sysname
-            local cmd = nil
+            local cmd_info = nil
             
-            if os_name == "Darwin" then
-                cmd = 'pbcopy'
-            elseif os_name == "Linux" then
-                if vim.fn.executable('xclip') == 1 then
-                    cmd = 'xclip -selection clipboard'
-                elseif vim.fn.executable('xsel') == 1 then
-                    cmd = 'xsel --clipboard --input'
+            -- 定義允許的命令白名單
+            local allowed_commands = {
+                Darwin = {
+                    { cmd = 'pbcopy', args = '' }
+                },
+                Linux = {
+                    { cmd = 'xclip', args = '-selection clipboard' },
+                    { cmd = 'xsel', args = '--clipboard --input' }
+                },
+                Windows_NT = {
+                    { cmd = 'clip', args = '' }
+                }
+            }
+            
+            -- 選擇適當的命令
+            local commands = allowed_commands[os_name] or {}
+            for _, cmd_entry in ipairs(commands) do
+                if vim.fn.executable(cmd_entry.cmd) == 1 then
+                    cmd_info = cmd_entry
+                    break
                 end
-            elseif os_name == "Windows_NT" then
-                cmd = 'clip'
             end
             
-            if cmd then
-                local handle = io.popen(cmd, 'w')
-                if handle then
+            if not cmd_info then
+                return false
+            end
+            
+            -- 安全地構建完整命令
+            local full_cmd = cmd_info.cmd
+            if cmd_info.args ~= '' then
+                full_cmd = full_cmd .. ' ' .. cmd_info.args
+            end
+            
+            -- 驗證命令安全性
+            local cmd_name = cmd_info.cmd
+            local safe_commands = {
+                pbcopy = true,
+                xclip = true,
+                xsel = true,
+                clip = true
+            }
+            
+            if not safe_commands[cmd_name] then
+                error_handler.security_error("不安全的剪貼板命令被阻止", {
+                    command = cmd_name,
+                    full_command = full_cmd
+                })
+                return false
+            end
+            
+            -- 安全執行命令
+            local success, handle = pcall(io.popen, full_cmd, 'w')
+            if success and handle then
+                local write_success, write_err = pcall(function()
                     handle:write(content)
-                    local success = handle:close()
-                    return success
+                    return handle:close()
+                end)
+                
+                if write_success then
+                    return write_success
+                else
+                    vim.notify("⚠️ 剪貼板寫入失敗: " .. tostring(write_err), vim.log.levels.WARN)
+                    return false
                 end
             end
+            
             return false
         end
         
@@ -508,29 +623,82 @@ function M.diagnose_clipboard()
     vim.notify("Clipboard diagnosis printed to messages")
 end
 
--- 設定控制函數
-function M.configure(config)
-    if config.enable_osc52 ~= nil then
-        M_config.enable_osc52 = config.enable_osc52
-        vim.notify("OSC 52 " .. (config.enable_osc52 and "已啟用" or "已禁用"), vim.log.levels.INFO)
-    end
-    if config.security_check ~= nil then
-        M_config.security_check = config.security_check
-        vim.notify("安全檢查 " .. (config.security_check and "已啟用" or "已禁用"), vim.log.levels.INFO)
+-- 安全啟用 OSC 52 的函數（需要用戶確認）
+function M.enable_osc52_safely()
+    local choice = vim.fn.confirm(
+        "啟用 OSC 52 剪貼板功能？\n\n" ..
+        "⚠️  注意事項：\n" ..
+        "• OSC 52 會透過終端序列傳輸剪貼板內容\n" ..
+        "• 在 SSH 或 VM 環境中可能有安全風險\n" ..
+        "• 建議只在可信任的環境中使用\n" ..
+        "• 敏感內容檢測已啟用，但不是萬無一失",
+        "&Yes\n&No\n&Temporary (當前會話)",
+        2
+    )
+    
+    if choice == 1 then
+        M_config.enable_osc52 = true
+        vim.notify("✅ OSC 52 已永久啟用", vim.log.levels.INFO)
+        vim.notify("💡 提示：可用 :lua require('utils.clipboard').show_config() 查看設定", vim.log.levels.INFO)
+    elseif choice == 3 then
+        M_config.enable_osc52 = true
+        vim.notify("✅ OSC 52 已暫時啟用（僅限當前會話）", vim.log.levels.INFO)
+        -- 添加自動清理
+        vim.api.nvim_create_autocmd("VimLeavePre", {
+            callback = function()
+                M_config.enable_osc52 = false
+            end,
+            once = true
+        })
+    else
+        vim.notify("❌ OSC 52 保持禁用狀態", vim.log.levels.INFO)
     end
 end
 
--- 顯示當前設定
+-- 設定控制函數（增強版）
+function M.configure(config)
+    local changes = {}
+    
+    if config.enable_osc52 ~= nil then
+        M_config.enable_osc52 = config.enable_osc52
+        table.insert(changes, "OSC 52: " .. (config.enable_osc52 and "啟用" or "禁用"))
+    end
+    
+    if config.security_check ~= nil then
+        M_config.security_check = config.security_check
+        table.insert(changes, "安全檢查: " .. (config.security_check and "啟用" or "禁用"))
+    end
+    
+    if config.max_osc52_size ~= nil then
+        M_config.max_osc52_size = config.max_osc52_size
+        table.insert(changes, "OSC 52 大小限制: " .. config.max_osc52_size .. " bytes")
+    end
+    
+    if config.strict_validation ~= nil then
+        M_config.strict_validation = config.strict_validation
+        table.insert(changes, "嚴格驗證: " .. (config.strict_validation and "啟用" or "禁用"))
+    end
+    
+    if #changes > 0 then
+        vim.notify("🔧 剪貼板配置已更新:\n" .. table.concat(changes, "\n"), vim.log.levels.INFO)
+    end
+end
+
+-- 顯示當前設定（增強版）
 function M.show_config()
-    local config_info = "=== 剪貼板安全設定 ===\n"
-    config_info = config_info .. "OSC 52: " .. (M_config.enable_osc52 and "啟用" or "禁用") .. "\n"
-    config_info = config_info .. "安全檢查: " .. (M_config.security_check and "啟用" or "禁用") .. "\n"
-    config_info = config_info .. "\n使用方法：\n"
-    config_info = config_info .. "require('utils.clipboard').configure({enable_osc52 = false}) -- 禁用 OSC 52\n"
-    config_info = config_info .. "require('utils.clipboard').configure({security_check = false}) -- 禁用安全檢查"
+    local config_info = "=== 🔐 剪貼板安全設定 ===\n"
+    config_info = config_info .. "OSC 52: " .. (M_config.enable_osc52 and "✅ 啟用" or "❌ 禁用") .. "\n"
+    config_info = config_info .. "安全檢查: " .. (M_config.security_check and "✅ 啟用" or "❌ 禁用") .. "\n"
+    config_info = config_info .. "大小限制: " .. M_config.max_osc52_size .. " bytes\n"
+    config_info = config_info .. "嚴格驗證: " .. (M_config.strict_validation and "✅ 啟用" or "❌ 禁用") .. "\n"
+    config_info = config_info .. "\n=== 🛠️  控制指令 ===\n"
+    config_info = config_info .. ":lua require('utils.clipboard').enable_osc52_safely() -- 安全啟用 OSC 52\n"
+    config_info = config_info .. ":lua require('utils.clipboard').configure({enable_osc52 = false}) -- 禁用 OSC 52\n"
+    config_info = config_info .. ":lua require('utils.clipboard').configure({security_check = false}) -- 禁用安全檢查\n"
+    config_info = config_info .. ":lua require('utils.clipboard').diagnose_clipboard() -- 診斷剪貼板功能"
     
     print(config_info)
-    vim.notify("剪貼板設定已輸出到訊息")
+    vim.notify("剪貼板設定已輸出到 :messages")
 end
 
 return M

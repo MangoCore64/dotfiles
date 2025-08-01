@@ -267,6 +267,16 @@ MIT License
 
 ## 更新記錄
 
+- 2025-08-01:
+  - **重大配置健檢與安全性修正**
+  - 修復 LSP 配置錯誤：移除不存在的 vim.lsp.enable() API
+  - 修正 Mason LSP server 名稱錯誤（package names → server names）
+  - 更新所有已棄用的 nvim_buf_get_option API 為 vim.bo
+  - **安全性增強**：OSC 52 預設禁用，新增敏感內容檢測
+  - 重構 terminal-manager.lua 提升穩定性與簡潔性
+  - 新增統一錯誤處理系統 (error-handler.lua)
+  - 新增配置驗證機制 (config-validator.lua)
+  - 實施混合版本管理策略（AI 工具鎖定版本，其他保持彈性）
 - 2025-07-31:
   - **智能終端管理系統完整實現**
   - 新增 Claude Code 與 Gemini AI 雙終端支援，支援智能切換

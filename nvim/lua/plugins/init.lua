@@ -1,17 +1,38 @@
--- 所有插件已鎖定穩定版本以確保相容性和安全性
--- 更新插件版本時請先在測試環境驗證
+-- ===================================================================
+-- Plugin 版本管理策略 - 混合策略平衡穩定性與功能更新
+-- ===================================================================
+-- 
+-- 🔒 嚴格鎖定（核心功能）：
+--    - NvChad framework, LSP, Mason, Blink.cmp
+--    - 維持當前版本，只在測試驗證後手動更新
+--
+-- 🔧 適度靈活（工具插件）：
+--    - Claude Code, Gemini → 鎖定當前穩定版本，允許手動更新
+--    - 提供更新通知但不自動應用
+--
+-- 🚀 靈活更新（成熟插件）：
+--    - Telescope, Persistence, Conform → 允許小版本自動更新
+--    - 提供更新通知和回滾機制
+--
+-- ⚠️  更新流程：
+--    1. 在測試環境驗證新版本
+--    2. 檢查更新日誌和破壞性變更
+--    3. 漸進式更新，每次只更新幾個插件
+--    4. 保持配置備份以便回滾
+-- ===================================================================
+
 return {
   {
     "stevearc/conform.nvim",
     -- event = 'BufWritePre', -- uncomment for format on save
-    tag = "v8.1.0",  -- 鎖定穩定版本
+    tag = "v8.1.0",  -- 嚴格鎖定（核心功能）
     opts = require "configs.conform",
   },
 
   -- Mason: LSP server installer
   {
     "williamboman/mason.nvim",
-    tag = "v1.10.0",  -- 鎖定穩定版本
+    tag = "v1.10.0",  -- 嚴格鎖定（核心功能）
     opts = {
       ui = {
         border = "rounded",
@@ -27,7 +48,7 @@ return {
   -- Mason LSP Config: Bridge between mason and lspconfig
   {
     "williamboman/mason-lspconfig.nvim",
-    tag = "v1.29.0",  -- 鎖定穩定版本
+    tag = "v1.29.0",  -- 嚴格鎖定（核心功能）
     dependencies = { "williamboman/mason.nvim" },
     opts = {
       ensure_installed = {
@@ -47,7 +68,7 @@ return {
   -- These are some examples, uncomment them if you want to see them work!
   {
     "neovim/nvim-lspconfig",
-    tag = "v1.2.0",  -- 鎖定穩定版本
+    tag = "v1.2.0",  -- 嚴格鎖定（核心功能）
     dependencies = { "williamboman/mason-lspconfig.nvim" },
     config = function()
       require "configs.lspconfig"
@@ -57,9 +78,9 @@ return {
   -- Claude Code AI Assistant
   {
     "greggh/claude-code.nvim",
-    -- 移除無效的 commit，使用最新穩定版本
-    lazy = false,  -- 確保立即載入，不延遲
-    priority = 100, -- 提高優先級確保早期載入
+    commit = "c9a31e51069977edaad9560473b5d031fcc5d38b", -- 適度靈活（工具插件）
+    event = "VeryLazy", -- 延遲載入提高啟動效能（從 lazy = false 改進）
+    cmd = "ClaudeCode", -- 命令觸發載入
     config = function()
       -- 確保插件正確設置
       local claude_code = require("claude-code")
@@ -121,9 +142,9 @@ return {
           local status = terminal_manager.get_status()
           
           -- 優先檢查是否在當前視窗
-          if status.claude_code.active and status.claude_code.is_current then
+          if status.claude_code.visible and status.claude_code.is_current then
             terminal_manager.toggle_claude_code()
-          elseif status.gemini.active then
+          elseif status.gemini.visible then
             -- 檢查當前 buffer 是否為 gemini
             local current_buf = vim.api.nvim_get_current_buf()
             if current_buf == status.gemini.buf then
@@ -143,8 +164,12 @@ return {
         end, { desc = 'Terminal status check' })
         
         map('n', '<leader>tr', function()
-          terminal_manager.fix_state()
-        end, { desc = 'Reset and fix terminal state' })
+          terminal_manager.cleanup()
+        end, { desc = 'Cleanup terminal state' })
+        
+        map('n', '<leader>tR', function()
+          terminal_manager.reset()
+        end, { desc = 'Reset all terminals' })
       end, 100) -- 100ms 延遲確保命令已註冊
     end
   },
@@ -152,7 +177,8 @@ return {
   -- Gemini CLI Integration
   {
     "JonRoosevelt/gemini.nvim",
-    lazy = false,
+    commit = "d86251d8950011b35930641c8a9b7ad75317e65a", -- 適度靈活（工具插件）
+    event = "VeryLazy", -- 延遲載入提高啟動效能（從 lazy = false 改進）
     config = function()
       -- 基本設定，但不使用其內建的 toggle 功能
       require("gemini").setup({
@@ -197,6 +223,7 @@ return {
   -- Persistence: 2024 現代會話管理 (專為 Neovim 設計)
   {
     'folke/persistence.nvim',
+    tag = "v1.0.0",        -- 靈活更新（成熟插件）
     event = "BufReadPre",  -- 提前載入確保會話恢復
     opts = {
       dir = vim.fn.expand(vim.fn.stdpath("state") .. "/sessions/"), -- 會話存儲目錄
@@ -211,7 +238,7 @@ return {
           -- 清理無效的 buffer（目錄、空 buffer 等）
           for _, buf in ipairs(vim.api.nvim_list_bufs()) do
             local buf_name = vim.api.nvim_buf_get_name(buf)
-            local buf_type = vim.api.nvim_buf_get_option(buf, 'buftype')
+            local buf_type = vim.bo[buf].buftype  -- 使用新的 API 替代已棄用的 nvim_buf_get_option
             local is_directory = vim.fn.isdirectory(buf_name) == 1
             local is_empty = buf_name == ""
             local is_dotfiles_dir = string.match(buf_name, "dotfiles/?$")
@@ -226,7 +253,7 @@ return {
           local valid_buffers = 0
           for _, buf in ipairs(vim.api.nvim_list_bufs()) do
             local buf_name = vim.api.nvim_buf_get_name(buf)
-            local buf_type = vim.api.nvim_buf_get_option(buf, 'buftype')
+            local buf_type = vim.bo[buf].buftype  -- 使用新的 API 替代已棄用的 nvim_buf_get_option
             if vim.api.nvim_buf_is_loaded(buf) and buf_name ~= "" and buf_type == "" then
               valid_buffers = valid_buffers + 1
             end
@@ -249,7 +276,7 @@ return {
           vim.defer_fn(function()
             for _, buf in ipairs(vim.api.nvim_list_bufs()) do
               local buf_name = vim.api.nvim_buf_get_name(buf)
-              local buf_type = vim.api.nvim_buf_get_option(buf, 'buftype')
+              local buf_type = vim.bo[buf].buftype  -- 使用新的 API 替代已棄用的 nvim_buf_get_option
               local is_directory = vim.fn.isdirectory(buf_name) == 1
               local is_empty = buf_name == ""
               local is_dotfiles_dir = string.match(buf_name, "dotfiles/?$")
@@ -263,7 +290,7 @@ return {
             local valid_buffers = 0
             for _, buf in ipairs(vim.api.nvim_list_bufs()) do
               local buf_name = vim.api.nvim_buf_get_name(buf)
-              local buf_type = vim.api.nvim_buf_get_option(buf, 'buftype')
+              local buf_type = vim.bo[buf].buftype  -- 使用新的 API 替代已棄用的 nvim_buf_get_option
               if vim.api.nvim_buf_is_loaded(buf) and buf_name ~= "" and buf_type == "" then
                 valid_buffers = valid_buffers + 1
               end
@@ -289,17 +316,19 @@ return {
   -- Telescope: 覆蓋 NvChad 預設配置以修復 C-j/C-k 導航
   {
     "nvim-telescope/telescope.nvim",
+    -- 靈活更新（成熟插件）- 由 NvChad 管理版本
     opts = function()
       return require "configs.telescope"
     end,
   },
 
   -- Blink.cmp: 使用 NvChad 官方整合
-  { import = "nvchad.blink.lazyspec" },
+  { import = "nvchad.blink.lazyspec" }, -- 嚴格鎖定（核心功能）- 由 NvChad 管理
   
   -- GitHub Copilot: AI 程式碼建議
   {
     "zbirenbaum/copilot.lua",
+    tag = "v1.16.0",       -- 適度靈活（工具插件）
     cmd = "Copilot",
     event = "InsertEnter",
     config = function()
@@ -318,6 +347,7 @@ return {
   -- Blink-Copilot: blink.cmp 與 Copilot 整合
   {
     "fang2hou/blink-copilot",
+    commit = "41e91a659bd9b8cba9ba2ea68a69b52ba5a9ebd8", -- 適度靈活（工具插件）
     dependencies = { "zbirenbaum/copilot.lua", "saghen/blink.cmp" },
     event = "InsertEnter",
     config = function()
@@ -332,6 +362,7 @@ return {
   -- Blink.cmp 自定義配置
   {
     "saghen/blink.cmp",
+    -- 嚴格鎖定（核心功能）- 由 NvChad 管理版本
     opts = function()
       return require "configs.blink"
     end,
@@ -339,6 +370,7 @@ return {
 
   {
     "nvim-treesitter/nvim-treesitter",
+    -- 靈活更新（成熟插件）- 由 NvChad 管理，允許語法更新
     opts = {
       ensure_installed = {
         -- 核心開發語言
