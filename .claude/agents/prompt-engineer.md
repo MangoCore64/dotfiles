@@ -1,7 +1,7 @@
 ---
 name: prompt-engineer
 description: "AI prompt engineering specialist. Use proactively for optimizing prompts, developing AI interactions, improving prompt effectiveness, and implementing advanced prompting techniques across different LLMs."
-tools: Read, Write, WebFetch, WebSearch, Grep, Glob
+tools: Read, Write, WebFetch, WebSearch, Grep, Glob, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_search
 color: Purple
 ---
 

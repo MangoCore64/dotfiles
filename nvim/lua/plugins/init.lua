@@ -101,12 +101,12 @@ return {
       -- 延遲註冊按鍵映射，確保命令已註冊
       vim.defer_fn(function()
         local map = vim.keymap.set
-        local terminal_manager = require('utils.terminal-manager')
+        local terminal_manager = require('utils.terminal.manager')
         
-        -- 主要切換按鍵 (智能檢測版本)
+        -- 主要切換按鍵 (Claude Code - 語義清晰)
         map('n', '<leader>cc', function()
           terminal_manager.toggle_claude_code()
-        end, { desc = 'Toggle Claude Code (smart detection)' })
+        end, { desc = 'Toggle Claude Code AI' })
         
         -- 終端模式支援 - 使用逃脫序列
         map('t', '<leader>cc', function()
@@ -114,26 +114,21 @@ return {
           terminal_manager.toggle_claude_code()
         end, { desc = 'Toggle Claude Code from terminal mode' })
         
-        -- 快速開啟按鍵
-        map('n', '<leader>ai', function()
-          terminal_manager.toggle_claude_code()
-        end, { desc = 'Open Claude Code AI assistant' })
-        
-        -- 備用按鍵
+        -- 保留 F12 作為快速鍵
         map('n', '<F12>', function()
           terminal_manager.toggle_claude_code()
         end, { desc = 'Claude Code (F12)' })
         
-        -- 終端之間切換 (核心功能)
+        -- 終端之間切換 (核心功能) - 使用 Terminal Toggle 語義
         map('n', '<leader>tt', function()
           terminal_manager.switch_terminal()
-        end, { desc = 'Switch between Claude Code and Gemini' })
+        end, { desc = 'Switch between AI terminals' })
         
         -- 終端模式下的切換支援
         map('t', '<leader>tt', function()
           vim.cmd('stopinsert')
           terminal_manager.switch_terminal()
-        end, { desc = 'Switch terminals from terminal mode' })
+        end, { desc = 'Switch AI terminals from terminal mode' })
         
         -- 使用 Ctrl+Q 隱藏當前終端
         map('t', '<C-q>', function()
@@ -157,7 +152,7 @@ return {
           end
         end, { desc = 'Hide current terminal' })
         
-        -- 狀態管理功能
+        -- 終端管理功能 (使用 Terminal Status 命名空間)
         map('n', '<leader>ts', function()
           local status = terminal_manager.get_status()
           print(vim.inspect(status))
@@ -191,28 +186,23 @@ return {
       -- 設定我們自己的按鍵映射
       vim.defer_fn(function()
         local map = vim.keymap.set
-        local terminal_manager = require('utils.terminal-manager')
+        local terminal_manager = require('utils.terminal.manager')
         
-        -- 主要切換按鍵（使用新的管理器）
-        map('n', '<leader>og', function()
+        -- 主要切換按鍵（語義化改進 - 避免與 "agent" 混淆）
+        map('n', '<leader>gm', function()
           terminal_manager.toggle_gemini()
-        end, { desc = 'Toggle Gemini CLI (smart detection)' })
+        end, { desc = 'Toggle Gemini AI' })
         
         -- 終端模式支援
-        map('t', '<leader>og', function()
+        map('t', '<leader>gm', function()
           vim.cmd('stopinsert')
           terminal_manager.toggle_gemini()
         end, { desc = 'Toggle Gemini from terminal mode' })
         
-        -- 備用按鍵
-        map('n', '<leader>gm', function()
-          terminal_manager.toggle_gemini()
-        end, { desc = 'Toggle Gemini CLI' })
-        
         -- 兼容 Shift+F12 作為 Gemini 的快捷鍵
         map('n', '<S-F12>', function()
           terminal_manager.toggle_gemini()
-        end, { desc = 'Gemini CLI (Shift+F12)' })
+        end, { desc = 'Gemini AI (Shift+F12)' })
         
         -- 保留發送選取文字到 Gemini 的功能
         map('v', '<leader>sg', '<cmd>lua require("gemini").send_to_gemini()<CR>', { desc = 'Send selection to Gemini' })
@@ -328,7 +318,6 @@ return {
   -- GitHub Copilot: AI 程式碼建議
   {
     "zbirenbaum/copilot.lua",
-    tag = "v1.16.0",       -- 適度靈活（工具插件）
     cmd = "Copilot",
     event = "InsertEnter",
     config = function()
@@ -340,6 +329,20 @@ return {
         -- Copilot 設定
         copilot_node_command = 'node', -- Node.js 路徑
         server_opts_overrides = {},
+        -- 文件類型控制：避免在敏感文件中啟用
+        filetypes = {
+          yaml = false,
+          markdown = true,      -- 允許在 markdown 中使用
+          help = true,          -- 允許在 help 文件中使用
+          gitcommit = false,    -- 禁用於 git commit
+          gitrebase = false,    -- 禁用於 git rebase
+          hgcommit = false,     -- 禁用於 mercurial commit
+          svn = false,          -- 禁用於 svn
+          cvs = false,          -- 禁用於 cvs
+          ["."] = false,        -- 禁用於點文件
+          [".env"] = false,     -- 明確禁用於環境變數文件
+          ["*"] = true,         -- 其他文件類型默認啟用
+        },
       })
     end,
   },
@@ -352,9 +355,17 @@ return {
     event = "InsertEnter",
     config = function()
       require("blink-copilot").setup({
-        -- 基本配置參數
-        trigger = "manual",  -- 手動觸發 copilot 建議
-        accept = "tab",      -- 使用 Tab 接受建議
+        -- 官方推薦的完整配置參數
+        max_completions = 3,      -- 支援多個候選項（默認：3）
+        max_attempts = 4,         -- 最大重試次數（默認：4）
+        debounce = 200,          -- 防抖延遲，優化性能（默認：200ms）
+        kind_name = "Copilot",   -- 補全項目類型名稱
+        kind_icon = " ",         -- Copilot 圖示
+        kind_hl = false,         -- 是否高亮顯示類型
+        auto_refresh = {         -- 自動刷新設定
+          backward = true,       -- 向後移動時刷新
+          forward = true         -- 向前移動時刷新
+        },
       })
     end,
   },

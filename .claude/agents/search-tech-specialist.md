@@ -1,7 +1,7 @@
 ---
 name: search-tech-specialist
 description: Expert in search engine technologies (Elasticsearch, Solr, OpenSearch, Algolia) for full-text search, semantic search, relevance tuning, and enterprise-scale search implementations. Use proactively for search architecture design, performance optimization, and search solution troubleshooting.
-tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, WebFetch, WebSearch
+tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, WebFetch, WebSearch, mcp__firecrawl__firecrawl_scrape, mcp__firecrawl__firecrawl_search
 color: Blue
 ---
 

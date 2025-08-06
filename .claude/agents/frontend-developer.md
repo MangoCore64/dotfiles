@@ -1,7 +1,7 @@
 ---
 name: frontend-developer
 description: Use proactively for frontend development tasks including React/Vue/Angular components, UI/UX implementation, CSS frameworks, responsive design, state management, accessibility, testing, and modern frontend tooling. Specialist for reviewing frontend code quality and performance optimization.
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, WebFetch, WebSearch
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 color: Blue
 ---
 

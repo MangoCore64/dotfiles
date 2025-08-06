@@ -2,7 +2,7 @@
 name: php-expert
 description: Use proactively for PHP development tasks including modern PHP 8.0+ projects, framework-based applications (Laravel, Symfony, etc.), legacy PHP modernization, API development, database integration, and PHP-specific architecture patterns. Specialist for reviewing PHP code quality, security practices, and performance optimization.
 color: Purple
-tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, LS, WebFetch
+tools: Read, Write, Edit, MultiEdit, Bash, Grep, Glob, LS, WebFetch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Purpose

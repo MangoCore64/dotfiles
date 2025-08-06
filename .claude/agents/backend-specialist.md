@@ -2,7 +2,7 @@
 name: backend-specialist
 description: Use proactively for backend development tasks including API design, microservices architecture, database design, server-side logic, authentication systems, cloud infrastructure, and system scalability optimization
 color: Blue
-tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, WebFetch, WebSearch
+tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, LS, WebFetch, WebSearch, mcp__context7__resolve-library-id, mcp__context7__get-library-docs
 ---
 
 # Purpose
