@@ -34,7 +34,4 @@ require "autocmds"
 
 vim.schedule(function()
   require "mappings"
-  
-  -- 設置配置驗證器
-  require("utils.config-validator").setup()
 end)

@@ -31,28 +31,106 @@ mason_lspconfig.setup({
   automatic_installation = true,
 })
 
--- 自動設定已安裝的 LSP servers
+-- 增強的 LSP 設定處理器
 mason_lspconfig.setup_handlers({
   -- 預設處理器：為所有伺服器套用基本設定
   function(server_name)
     require("lspconfig")[server_name].setup({
-      -- 可以在這裡添加全域的 LSP 設定
+      -- 全域 LSP 設定
       on_attach = function(client, bufnr)
-        -- LSP 按鍵映射和功能在這裡設定
-        -- NvChad 已經提供了預設的 on_attach 功能
+        -- 啟用診斷自動顯示
+        vim.diagnostic.config({
+          virtual_text = {
+            prefix = "●",
+            source = "if_many",
+          },
+          signs = true,
+          update_in_insert = false,
+          underline = true,
+          severity_sort = true,
+          float = {
+            focusable = false,
+            style = "minimal",
+            border = "rounded",
+            source = "always",
+            header = "",
+            prefix = "",
+          },
+        })
+        
+        -- 診斷符號設定
+        local signs = { Error = " ", Warn = " ", Hint = " ", Info = " " }
+        for type, icon in pairs(signs) do
+          local hl = "DiagnosticSign" .. type
+          vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
+        end
       end,
+      
+      -- 能力設定
+      capabilities = vim.tbl_deep_extend("force", 
+        vim.lsp.protocol.make_client_capabilities(),
+        require("blink.cmp").get_lsp_capabilities()
+      ),
     })
   end,
   
-  -- 特定伺服器的自訂設定
+  -- TypeScript/JavaScript 增強設定
   ["vtsls"] = function()
     require("lspconfig").vtsls.setup({
-      -- TypeScript/JavaScript 特定設定
       settings = {
         typescript = {
           inlayHints = {
             includeInlayParameterNameHints = "all",
             includeInlayFunctionParameterTypeHints = true,
+            includeInlayVariableTypeHints = true,
+            includeInlayPropertyDeclarationTypeHints = true,
+            includeInlayFunctionLikeReturnTypeHints = true,
+          },
+          preferences = {
+            includePackageJsonAutoImports = "auto",
+          },
+        },
+        javascript = {
+          inlayHints = {
+            includeInlayParameterNameHints = "all",
+            includeInlayFunctionParameterTypeHints = true,
+            includeInlayVariableTypeHints = true,
+            includeInlayPropertyDeclarationTypeHints = true,
+            includeInlayFunctionLikeReturnTypeHints = true,
+          },
+        },
+      },
+    })
+  end,
+  
+  -- Vue 專用設定
+  ["vuels"] = function()
+    require("lspconfig").vuels.setup({
+      settings = {
+        vetur = {
+          useWorkspaceDependencies = false,
+          validation = {
+            template = true,
+            style = true,
+            script = true,
+          },
+          completion = {
+            autoImport = true,
+            useScaffoldSnippets = true,
+            tagCasing = "kebab",
+          },
+        },
+      },
+    })
+  end,
+  
+  -- PHP 專用設定
+  ["phpactor"] = function()
+    require("lspconfig").phpactor.setup({
+      settings = {
+        phpactor = {
+          completion = {
+            insertUseDeclaration = true,
           },
         },
       },

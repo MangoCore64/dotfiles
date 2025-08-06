@@ -65,6 +65,7 @@ local opts = {
       path = {
         module = 'blink.cmp.sources.path',
         min_keyword_length = 0,  -- 允許空字符開始補全
+        score_offset = -1,  -- 降低路徑補全優先級，避免過度干擾
         opts = {
           show_hidden_files_by_default = true,
           get_cwd = function(ctx) return vim.fn.getcwd() end,
@@ -89,11 +90,17 @@ local opts = {
         module = "blink-copilot",
         score_offset = 100,  -- 給 Copilot 建議更高優先級
         async = true,
+        timeout_ms = 3000,   -- 添加超時設定，避免無限等待
+        -- 傳遞額外配置到 provider
+        opts = {
+          max_completions = 3,    -- 與 blink-copilot setup 配置保持一致
+          debounce = 200,        -- 性能優化
+        },
       },
     },
   },
 
-  -- 命令列補全設定
+  -- 命令列補全設定：針對路徑補全優化
   cmdline = {
     enabled = true,
     keymap = {
@@ -105,7 +112,15 @@ local opts = {
     },
     sources = { 'path', 'cmdline' },
     completion = {
-      menu = { auto_show = true },
+      menu = { 
+        auto_show = true,
+      },
+    },
+    -- 命令列專用模糊匹配設定
+    fuzzy = {
+      max_typos = 0,  -- 命令列要求精確匹配
+      use_frecency = false,  -- 禁用頻率優先
+      sorts = { 'score', 'label' },  -- 簡化排序邏輯
     },
   },
 
@@ -134,14 +149,21 @@ local opts = {
     },
   },
 
-  -- 模糊匹配優化：使用 Rust 實現獲得最佳效能
+  -- 模糊匹配優化：精確匹配優先，減少干擾
   fuzzy = {
     max_typos = function(keyword)
-      return math.floor(#keyword / 4)  -- 動態拼寫容錯
+      -- 更嚴格的拼寫容錯：較短關鍵字要求更精確
+      if #keyword <= 3 then
+        return 0  -- 短關鍵字不允許拼寫錯誤
+      elseif #keyword <= 6 then
+        return 1  -- 中等關鍵字最多1個錯誤
+      else
+        return math.floor(#keyword / 6)  -- 長關鍵字相對寬鬆
+      end
     end,
-    use_frecency = true,         -- 頻率 + 最近使用
-    use_proximity = true,        -- 接近度匹配
-    sorts = { 'label', 'kind', 'score' },
+    use_frecency = false,        -- 禁用頻率優先，避免干擾精確匹配
+    use_proximity = true,        -- 保持接近度匹配
+    sorts = { 'score', 'label', 'kind' },  -- 精確匹配分數優先
   },
 }
 
