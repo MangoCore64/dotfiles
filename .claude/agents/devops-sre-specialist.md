@@ -1,6 +1,6 @@
 ---
 name: devops-sre-specialist
-description: Use proactively for CI/CD pipeline design, infrastructure automation, containerization, cloud operations, monitoring implementation, and system reliability optimization. Specialist in DevOps best practices, SRE principles, and platform engineering.
+description: DevOps/SRE specialist for CI/CD pipelines, infrastructure automation, containerization, monitoring, and system reliability. Use proactively for deployment, cloud operations, and platform engineering. Triggers on: DevOps, SRE, CI/CD, pipeline, 管線, deploy, 部署, infrastructure, 基礎設施, container, Docker, Kubernetes, K8s, cloud, 雲端, AWS, GCP, Azure, monitoring, 監控, logging, 日誌, automation, 自動化, Terraform, Ansible
 color: Cyan
 tools: Read, Write, Edit, MultiEdit, Bash, Glob, Grep, WebFetch, WebSearch
 ---

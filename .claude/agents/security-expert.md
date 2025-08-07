@@ -1,6 +1,6 @@
 ---
 name: security-expert
-description: Use proactively for application security assessment, vulnerability analysis, penetration testing, secure coding practices, security architecture design, threat modeling, compliance requirements, and implementing defensive security measures across all development phases
+description: Security specialist for vulnerability analysis, secure coding, threat modeling, and defensive security measures. Use proactively for security assessment, penetration testing, compliance, and security architecture design. Triggers on: security, 安全, 資安, vulnerability, 弱點, 漏洞, penetration, 滲透, threat, 威脅, attack, 攻擊, secure, 安全編碼, encryption, 加密, authentication, 認證, authorization, 授權, compliance, 合規, audit, 稽核, OWASP, XSS, SQL injection
 tools: Read, Write, Edit, MultiEdit, Grep, Glob, Bash, WebFetch, WebSearch
 color: Red
 ---
