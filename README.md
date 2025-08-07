@@ -8,15 +8,31 @@
 .
 ├── .vimrc              # Vim 設定檔
 ├── .tmux.conf          # Tmux 設定檔
-├── nvim/               # Neovim 設定目錄
-│   ├── init.lua        # Neovim 主設定檔
+├── .claude/            # Claude Code 配置目錄
+│   └── agents/         # 專業 sub-agent 生態系統
+├── nvim/               # Neovim 設定目錄 (NvChad v2.5)
+│   ├── init.lua        # NvChad bootstrap 入口
 │   ├── lazy-lock.json  # 插件版本鎖定檔
+│   ├── docs/           # 📚 開發者文檔體系
+│   │   ├── QUICKSTART.md      # 5分鐘快速入門
+│   │   ├── USER_GUIDE.md      # 完整使用指南
+│   │   ├── ARCHITECTURE.md    # 系統架構文檔
+│   │   ├── API_REFERENCE.md   # API 參考手冊
+│   │   ├── EXTENDING.md       # 擴展開發指南
+│   │   └── TROUBLESHOOTING.md # 故障排除大全
+│   ├── tests/          # 🧪 品質保證測試系統
+│   │   ├── terminal/   # 終端系統整合測試
+│   │   └── clipboard/  # 剪貼簿功能測試
+│   ├── scripts/        # 自動化腳本
 │   └── lua/            # Lua 設定檔目錄
 │       ├── configs/    # 插件設定檔
 │       ├── plugins/    # 自定義插件
-│       └── utils/      # 工具函數
-├── install.sh          # 自動安裝腳本
-└── README.md           # 說明文件
+│       └── utils/      # 高階工具模組
+│           ├── terminal/    # 智能終端管理系統
+│           ├── clipboard/   # 智能剪貼簿系統
+│           └── error-handler.lua # 統一錯誤處理
+├── install.sh          # 🔧 智能安裝腳本 (安全性強化)
+└── README.md           # 📖 使用說明文件
 ```
 
 ## 快速安裝
@@ -149,6 +165,12 @@ cp -r nvim ~/.config/
    - **智能終端管理**：按 `<leader>cc` 開啟 Claude Code，按 `<leader>og` 開啟 Gemini AI
    - 智能剪貼簿：選取代碼後按 `<leader>cpr`
    - **GitHub Copilot**：編輯程式碼時自動顯示 AI 建議
+7. **查閱完整文檔**：
+   - 參考 `nvim/docs/` 目錄下的完整文檔系統
+   - 🚀 [QUICKSTART.md](nvim/docs/QUICKSTART.md) - 5分鐘快速上手
+   - 📚 [USER_GUIDE.md](nvim/docs/USER_GUIDE.md) - 詳細使用指南
+   - 🏠 [ARCHITECTURE.md](nvim/docs/ARCHITECTURE.md) - 系統架構設計
+   - 🔧 [TROUBLESHOOTING.md](nvim/docs/TROUBLESHOOTING.md) - 完整故障排除指南
 
 ## 相依性需求
 
@@ -158,10 +180,12 @@ cp -r nvim ~/.config/
 - curl (用於下載 vim-plug)
 
 ### 核心工具（自動安裝）
-- **neovim 0.8.0+** (主要編輯器)
+- **Neovim 0.9.0+** (主要編輯器)
   - 支援包管理器安裝 (brew, apt, yum, dnf, pacman)
+  - **macOS 優化**：支援 /opt/homebrew/bin/ 路徑自動檢測
   - 支援 AppImage 安裝 (Linux 無權限時)
   - 支援源碼編譯安裝 (最後選項)
+  - **終端啟動重試邏輯**：macOS 環境下提高成功率
 - **ripgrep** (NvChad 搜尋功能)
   - 支援包管理器安裝
   - 支援預編譯二進制下載
@@ -173,7 +197,13 @@ cp -r nvim ~/.config/
 - **Nerd Fonts** (圖示顯示)
   - 自動檢測系統字體目錄
   - 智能選擇字體安裝方式
-  - 支援 macOS 和 Linux 平台
+  - **跨平台優化**：支援 macOS 和 Linux 平台
+
+### 🔒 安全性增強 (2025-08)
+- **URL 驗證**：下載前驗證所有外部鏈接
+- **檔案完整性檢查**：SHA256 校驗
+- **權限控制**：腳本權限自動檢查
+- **備份系統**：自動時間戳備份現有配置
 
 ### AI 功能需求
 - **GitHub 帳號** (Copilot 認證)
@@ -265,8 +295,63 @@ curl -s https://api.github.com/user  # 測試 GitHub API 連線
 
 MIT License
 
-## 更新記錄
+## 📚 開發者文檔
 
+專案現在包含完整的開發者文檔體系，位於 `nvim/docs/` 目錄：
+
+- **[快速入門](nvim/docs/QUICKSTART.md)** - 5分鐘開始使用
+- **[使用指南](nvim/docs/USER_GUIDE.md)** - 完整功能介紹
+- **[架構文檔](nvim/docs/ARCHITECTURE.md)** - 系統設計說明
+- **[故障排除](nvim/docs/TROUBLESHOOTING.md)** - 常見問題解決
+- **[擴展開發](nvim/docs/EXTENDING.md)** - 自定義開發指南
+- **[API 參考](nvim/docs/API_REFERENCE.md)** - 完整 API 文檔
+
+### 🧪 品質保證
+- **自動化測試**：`nvim/tests/` - 終端、剪貼簿功能測試
+- **32+ 專業測試檔案**：
+  - **終端系統測試** (15+ 測試)：Claude Code/Gemini AI 整合、狀態管理、安全性
+  - **剪貼簿系統測試** (8+ 測試)：模組化架構、安全性加強、API 相容性
+  - **E2E 測試**：完整工作流程驗證和滲透測試
+- **執行測試**：`cd nvim && ./scripts/run_tests.sh` 或 `nvim -c "luafile tests/test_runner.lua"`
+
+## 🔧 開發者工具
+
+### 測試與開發
+```bash
+# 執行全部測試
+cd nvim && ./scripts/run_tests.sh
+
+# 檢查配置健康度
+nvim +checkhealth +qa
+
+# 查看詳細日誌
+tail -f ~/.local/share/nvim/log
+```
+
+### 除錯與監控
+- **性能監控**：內建 performance-monitor.lua
+- **錯誤處理**：統一 error-handler.lua 系統
+- **狀態管理**：terminal/state.lua 和 clipboard/state.lua
+
+---
+
+## 📋 更新記錄
+
+- **2025-08-08**:
+  - **文檔全面同步更新**：README.md 和 CLAUDE.md 反映最新架構變更和功能
+  - **macOS 優化功能詳細說明**：Homebrew 路徑支援、平台檢測機制、終端重試邏輯
+  - **測試系統完整介紹**：32+ 測試檔案、執行指引、E2E 工作流程驗證
+  - **安全性功能全面說明**：URL 驗證、SHA256 完整性檢查、權限控制機制
+  - **開發者文檔體系整合**：7 個專業文檔、完整 API 參考、模組化架構說明
+- **2025-08-07**:
+  - **macOS 終端啟動問題修復**：新增 Homebrew 路徑支援和重試邏輯
+  - **平台特定優化**：智能檢測 macOS 並應用專用配置
+  - **UI 性能優化**：簡化驗證機制，提升響應速度
+  - **備份目錄清理**：移除 nvim.backup/ 避免版本控制污染
+- **2025-08-06**:
+  - **開發者文檔體系建立**：完整的 docs/ 目錄和使用指南
+  - **測試系統部署**：品質保證和自動化測試框架
+  - **Claude agents 配置優化**：專業 sub-agent 生態系統
 - 2025-08-01:
   - **重大配置健檢與安全性修正**
   - 修復 LSP 配置錯誤：移除不存在的 vim.lsp.enable() API
