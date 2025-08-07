@@ -76,7 +76,39 @@ local function create_floating_window(buf, ui_config)
 end
 
 
--- 安全執行命令並創建終端
+-- 檢測當前平台
+local function detect_platform()
+  -- 使用現代 API (Neovim 0.10+ 推薦，向後相容)
+  local uname = (vim.uv or vim.loop).os_uname()
+  if uname.sysname == "Darwin" then
+    return "macos"
+  elseif uname.sysname == "Linux" then
+    return "linux"
+  else
+    return "unknown"
+  end
+end
+
+-- 平台特定配置
+local PLATFORM_CONFIG = {
+  macos = {
+    termopen_timeout = 2000, -- macOS上Node.js腳本啟動較慢
+    validation_delay = 150,   -- 增加驗證延遲
+    max_retries = 2          -- 允許重試
+  },
+  linux = {
+    termopen_timeout = 1000,
+    validation_delay = 100,
+    max_retries = 1
+  },
+  unknown = {
+    termopen_timeout = 1500,
+    validation_delay = 120,
+    max_retries = 1
+  }
+}
+
+-- 安全執行命令並創建終端（改良版）
 local function safe_execute_terminal_command(cmd_name)
   -- 驗證命令安全性
   local valid, safe_path, error_msg = security.validate_command(cmd_name)
@@ -92,31 +124,43 @@ local function safe_execute_terminal_command(cmd_name)
     end
   end
   
-  -- 直接在當前 buffer 中執行 termopen（恢復重構前的成功模式）
-  -- 使用驗證過的安全路徑執行命令
-  local success, job_id = pcall(vim.fn.termopen, safe_path, {
+  -- 獲取平台特定配置
+  local platform = detect_platform()
+  local config = PLATFORM_CONFIG[platform]
+  
+  -- macOS優化：使用平台特定的termopen配置
+  local termopen_options = {
     on_exit = function(job_id, exit_code, event)
       vim.schedule(function()
         vim.notify(string.format("🔍 終端 %s 結束 - 代碼: %d, 事件: %s", 
           cmd_name, exit_code, event), vim.log.levels.INFO)
         
+        -- macOS特定：處理常見的Node.js CLI退出碼
         if exit_code ~= 0 then
           vim.notify(string.format("⚠️ 終端 %s 異常結束 (代碼: %d)", cmd_name, exit_code), vim.log.levels.WARN)
           
-          -- 提供退出碼的詳細解釋
+          -- 增強的退出碼解釋（包含macOS特定情況）
           local exit_explanations = {
             [1] = "一般錯誤",
             [2] = "命令用法錯誤", 
-            [126] = "命令無法執行",
-            [127] = "命令未找到",
+            [126] = "命令無法執行 (檢查權限或路徑)",
+            [127] = "命令未找到 (檢查PATH環境變數)",
             [128] = "無效的退出參數",
-            [129] = "致命錯誤 (SIGHUP)",
+            [129] = "SIGHUP - 終端關閉 (正常行為)",
             [130] = "用戶中斷 (Ctrl+C)",
-            [143] = "終止信號 (SIGTERM)"
+            [143] = "SIGTERM - 程序終止",
+            -- macOS特定退出碼
+            [134] = "macOS系統中斷",
+            [137] = "SIGKILL - 強制終止"
           }
           
           local explanation = exit_explanations[exit_code] or "未知錯誤"
           vim.notify(string.format("📋 退出碼 %d 說明: %s", exit_code, explanation), vim.log.levels.INFO)
+          
+          -- macOS特定：提供Node.js CLI問題的診斷建議
+          if platform == "macos" and (exit_code == 126 or exit_code == 127) then
+            vim.notify("💡 macOS診斷建議: 嘗試 'brew doctor' 檢查Homebrew狀態", vim.log.levels.INFO)
+          end
         else
           vim.notify(string.format("✅ 終端 %s 正常結束", cmd_name), vim.log.levels.INFO)
         end
@@ -125,7 +169,24 @@ local function safe_execute_terminal_command(cmd_name)
         state.cleanup_terminal_state(cmd_name)
       end)
     end
-  })
+  }
+  
+  -- 添加macOS特定的環境變數 (修復Homebrew環境問題)
+  if platform == "macos" then
+    -- 使用深度複製避免修改全域環境變數
+    local env = vim.deepcopy(vim.fn.environ())
+    -- 確保Homebrew路徑在PATH中
+    if env.PATH and not env.PATH:match("/opt/homebrew/bin") then
+      env.PATH = "/opt/homebrew/bin:" .. env.PATH
+    elseif not env.PATH then
+      -- 處理 PATH 不存在的邊界情況
+      env.PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    end
+    termopen_options.env = env
+  end
+  
+  -- 執行termopen with enhanced error handling
+  local success, job_id = pcall(vim.fn.termopen, safe_path, termopen_options)
   
   -- 獲取當前 buffer 作為終端 buffer
   local buf = vim.api.nvim_get_current_buf()
@@ -146,14 +207,20 @@ local function safe_execute_terminal_command(cmd_name)
     return false, nil, nil, nil, "無法啟動終端程序: " .. failure_reason
   end
   
-  -- 驗證 termopen 後 buffer 和 job 狀態
+  -- 平台特定的驗證延遲和重試邏輯
   vim.defer_fn(function()
     if not state.is_buf_valid(buf) then
       vim.notify(string.format("⚠️ 警告: Buffer %d 在 termopen 後變為無效，可能程序立即退出", buf), vim.log.levels.WARN)
+      
+      -- macOS特定：Node.js腳本可能需要更長時間初始化
+      if platform == "macos" then
+        vim.notify("💡 macOS提示: Node.js CLI工具初始化需要時間，這可能是正常現象", vim.log.levels.INFO)
+      end
     else
-      vim.notify(string.format("✅ Termopen 成功 - Buffer: %d, Job: %d 狀態正常", buf, job_id), vim.log.levels.DEBUG)
+      vim.notify(string.format("✅ Termopen 成功 - Buffer: %d, Job: %d 狀態正常 (%s)", 
+        buf, job_id, platform), vim.log.levels.DEBUG)
     end
-  end, 100) -- 100ms 後檢查
+  end, config.validation_delay)
   
   -- 記錄安全執行日誌
   vim.notify(string.format("🔒 安全執行命令: %s -> %s (PID: %d)", 
@@ -162,12 +229,18 @@ local function safe_execute_terminal_command(cmd_name)
   return true, buf, job_id, safe_path, "終端程序啟動成功"
 end
 
--- 統一的終端開啟 API
+-- 統一的終端開啟 API（增強版）
 function M.open_terminal(config)
   if not config or not config.name or not config.command then
     vim.notify("❌ 終端配置不完整", vim.log.levels.ERROR)
     return false
   end
+  
+  -- 獲取平台信息進行優化
+  local platform = detect_platform()
+  local platform_config = PLATFORM_CONFIG[platform]
+  
+  vim.notify(string.format("🔧 在 %s 平台上開啟終端 %s", platform, config.name), vim.log.levels.DEBUG)
   
   -- 檢查是否已經開啟
   if M.is_terminal_visible(config.name) then
@@ -220,13 +293,36 @@ function M.open_terminal(config)
   
   vim.notify(string.format("✅ 成功創建浮動視窗 (Buffer: %d, Window: %d)", buf, win), vim.log.levels.DEBUG)
   
-  -- 3. 在浮動視窗中執行 termopen（這是關鍵！）
-  local success, job_id, safe_path, error_msg = safe_execute_terminal_command(config.command)
+  -- 3. 在浮動視窗中執行 termopen（改良版with retry logic）
+  local success, terminal_buf, job_id, safe_path, error_msg
+  local retries = 0
+  local max_retries = platform_config.max_retries
+  
+  repeat
+    success, terminal_buf, job_id, safe_path, error_msg = safe_execute_terminal_command(config.command)
+    if success then
+      break
+    end
+    
+    retries = retries + 1
+    if retries <= max_retries then
+      vim.notify(string.format("⏳ 終端啟動重試 %d/%d...", retries, max_retries), vim.log.levels.WARN)
+      vim.wait(platform_config.validation_delay)
+    end
+  until retries > max_retries
+  
   if not success then
     -- 清理失敗的視窗和 buffer
     pcall(vim.api.nvim_win_close, win, true)
     pcall(vim.api.nvim_buf_delete, buf, { force = true })
-    vim.notify("❌ 無法創建終端: " .. tostring(error_msg), vim.log.levels.ERROR)
+    
+    -- 提供平台特定的錯誤診斷
+    local diagnostic_msg = tostring(error_msg)
+    if platform == "macos" and error_msg:match("路徑不在安全白名單中") then
+      diagnostic_msg = diagnostic_msg .. "\n💡 macOS提示: 請確認CLI工具通過Homebrew正確安裝"
+    end
+    
+    vim.notify("❌ 無法創建終端 (" .. retries .. " 次嘗試): " .. diagnostic_msg, vim.log.levels.ERROR)
     return false
   end
   

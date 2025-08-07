@@ -9,11 +9,39 @@
 
 local M = {}
 
--- 載入核心模組
-local core = require('utils.terminal.core')
-local security = require('utils.terminal.security')
-local ui = require('utils.terminal.ui')
-local state = require('utils.terminal.state')
+-- 安全載入核心模組（增強錯誤處理）
+local function safe_require(module_path)
+  local success, module_or_error = pcall(require, module_path)
+  if not success then
+    vim.notify(string.format("❌ 模組載入失敗: %s - %s", module_path, tostring(module_or_error)), vim.log.levels.ERROR)
+    return nil, module_or_error
+  end
+  return module_or_error, nil
+end
+
+local core, core_error = safe_require('utils.terminal.core')
+local security, security_error = safe_require('utils.terminal.security')
+local ui, ui_error = safe_require('utils.terminal.ui')
+local state, state_error = safe_require('utils.terminal.state')
+
+-- 檢查關鍵模組載入狀態
+local CRITICAL_MODULES_STATUS = {
+  core = {module = core, error = core_error},
+  security = {module = security, error = security_error},
+  ui = {module = ui, error = ui_error},
+  state = {module = state, error = state_error}
+}
+
+-- 驗證關鍵模組可用性
+local function validate_critical_modules()
+  local missing_modules = {}
+  for name, info in pairs(CRITICAL_MODULES_STATUS) do
+    if not info.module then
+      table.insert(missing_modules, {name = name, error = info.error})
+    end
+  end
+  return #missing_modules == 0, missing_modules
+end
 
 -- API 版本
 M.VERSION = "3.0.0"
@@ -315,50 +343,162 @@ function M.validate_terminal_config(config)
   return #issues == 0, issues
 end
 
--- 自動註冊已知的終端類型
+-- 增強的自動註冊終端類型
 local function auto_register_terminals()
-  -- 註冊 Claude Code 終端
-  local claude_ok, claude_adapter = pcall(require, 'utils.terminal.adapters.claude')
-  if claude_ok then
-    M.register_terminal('claude', claude_adapter)
+  local registration_results = {}
+  local adapters = {
+    {name = 'claude', path = 'utils.terminal.adapters.claude'},
+    {name = 'gemini', path = 'utils.terminal.adapters.gemini'}
+  }
+  
+  for _, adapter_info in ipairs(adapters) do
+    local success, adapter_or_error = pcall(require, adapter_info.path)
+    
+    if success then
+      -- 驗證適配器介面完整性
+      local required_methods = {"open", "close", "toggle", "is_visible", "get_status"}
+      local missing_methods = {}
+      
+      for _, method in ipairs(required_methods) do
+        if type(adapter_or_error[method]) ~= "function" then
+          table.insert(missing_methods, method)
+        end
+      end
+      
+      if #missing_methods == 0 then
+        local register_success, register_error = pcall(M.register_terminal, adapter_info.name, adapter_or_error)
+        if register_success then
+          registration_results[adapter_info.name] = {success = true, message = "註冊成功"}
+        else
+          registration_results[adapter_info.name] = {success = false, error = register_error, reason = "註冊失敗"}
+        end
+      else
+        registration_results[adapter_info.name] = {
+          success = false, 
+          error = "介面不完整", 
+          missing_methods = missing_methods,
+          reason = "缺少必需方法"
+        }
+      end
+    else
+      registration_results[adapter_info.name] = {
+        success = false, 
+        error = adapter_or_error, 
+        reason = "模組載入失敗"
+      }
+    end
   end
   
-  -- 註冊 Gemini 終端
-  local gemini_ok, gemini_adapter = pcall(require, 'utils.terminal.adapters.gemini')
-  if gemini_ok then
-    M.register_terminal('gemini', gemini_adapter)
-  end
+  return registration_results
 end
 
--- 初始化統一 API
-function M.setup()
+-- 增強的初始化統一API
+function M.setup(options)
+  options = options or {}
+  local verbose = options.verbose ~= false  -- 預設為verbose模式
+  
   vim.notify("🚀 初始化終端管理系統 v" .. M.VERSION, vim.log.levels.INFO)
   
-  -- 自動註冊終端
-  auto_register_terminals()
+  -- 第一階段：驗證關鍵模組
+  local modules_ok, missing_modules = validate_critical_modules()
+  if not modules_ok then
+    local error_msg = "❌ 關鍵模組載入失敗：\n"
+    for _, mod in ipairs(missing_modules) do
+      error_msg = error_msg .. string.format("  • %s: %s\n", mod.name, tostring(mod.error))
+    end
+    vim.notify(error_msg, vim.log.levels.ERROR)
+    return false, "關鍵模組載入失敗"
+  end
   
-  -- 執行健康檢查
+  if verbose then
+    vim.notify("✅ 關鍵模組載入完成", vim.log.levels.INFO)
+  end
+  
+  -- 第二階段：自動註冊終端
+  local registration_results = auto_register_terminals()
+  local successful_registrations = 0
+  local total_adapters = 0
+  
+  for name, result in pairs(registration_results) do
+    total_adapters = total_adapters + 1
+    if result.success then
+      successful_registrations = successful_registrations + 1
+      if verbose then
+        vim.notify(string.format("✅ %s 終端註冊成功", name), vim.log.levels.INFO)
+      end
+    else
+      vim.notify(string.format("⚠️ %s 終端註冊失敗: %s", name, result.reason), vim.log.levels.WARN)
+      if verbose and result.missing_methods then
+        vim.notify("  缺少方法: " .. table.concat(result.missing_methods, ", "), vim.log.levels.WARN)
+      end
+    end
+  end
+  
+  -- 第三階段：執行健康檢查
   local health_ok, health_issues, health_stats = M.health_check()
   
-  if health_ok then
-    vim.notify(string.format("✅ 終端管理系統初始化完成 (健康分數: %.1f%%)", 
-      health_stats.health_score), vim.log.levels.INFO)
+  -- 第四階段：報告初始化結果
+  local init_success = modules_ok and successful_registrations > 0
+  
+  if init_success then
+    local status_msg = string.format(
+      "✅ 終端管理系統初始化完成\n" ..
+      "  • 註冊終端: %d/%d\n" ..
+      "  • 健康分數: %.1f%%\n" ..
+      "  • 系統狀態: %s",
+      successful_registrations, total_adapters,
+      health_stats.health_score,
+      health_ok and "健康" or "有警告"
+    )
+    vim.notify(status_msg, health_ok and vim.log.levels.INFO or vim.log.levels.WARN)
   else
-    vim.notify(string.format("⚠️ 終端管理系統初始化完成，但發現 %d 個問題", 
-      #health_issues), vim.log.levels.WARN)
+    vim.notify("❌ 終端管理系統初始化失敗", vim.log.levels.ERROR)
+  end
+  
+  -- 輸出健康問題（如果有且verbose模式）
+  if verbose and not health_ok then
+    vim.notify(string.format("發現 %d 個健康問題：", #health_issues), vim.log.levels.WARN)
     for _, issue in ipairs(health_issues) do
       vim.notify("  • " .. issue, vim.log.levels.WARN)
     end
   end
   
-  return health_ok
+  return init_success, {
+    modules_loaded = modules_ok,
+    terminals_registered = successful_registrations,
+    total_terminals = total_adapters,
+    health_ok = health_ok,
+    health_score = health_stats.health_score,
+    registration_details = registration_results
+  }
 end
 
--- 暴露核心模組（用於進階使用）
-M.core = core
-M.security = security
-M.ui = ui
-M.state = state
+-- 安全暴露核心模組（用於進階使用，帶錯誤檢查）
+if core then M.core = core end
+if security then M.security = security end
+if ui then M.ui = ui end
+if state then M.state = state end
+
+-- 提供模組可用性檢查
+function M.get_module_availability()
+  return {
+    core = core ~= nil,
+    security = security ~= nil,
+    ui = ui ~= nil,
+    state = state ~= nil
+  }
+end
+
+-- 獲取載入錯誤詳情
+function M.get_loading_errors()
+  local errors = {}
+  for name, info in pairs(CRITICAL_MODULES_STATUS) do
+    if not info.module and info.error then
+      errors[name] = tostring(info.error)
+    end
+  end
+  return errors
+end
 
 -- 暴露配置結構（用於文檔）
 M.TerminalConfig = TerminalConfig

@@ -38,7 +38,7 @@ local function get_secure_command_path(cmd_name)
     os.getenv("HOME") .. "/.npm-global/bin/" .. cmd_name,
     "/usr/local/bin/" .. cmd_name,
     "/usr/bin/" .. cmd_name,
-    "/bin/" .. cmd_name
+    "/bin/" .. cmd_name,
   }
   
   for _, path in ipairs(common_paths) do
@@ -59,6 +59,7 @@ local SECURE_COMMANDS = {
 
 -- 🔒 增強的安全路徑白名單（嚴格限制，防止路徑遍歷）
 local ALLOWED_PATH_PATTERNS = {
+  -- === Linux 路徑 ===
   -- 用戶 bin 目錄（優先，限制用戶名格式）
   "^/home/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
   -- 用戶本地安裝（限制更嚴格）
@@ -69,10 +70,28 @@ local ALLOWED_PATH_PATTERNS = {
   "^/home/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]/\\.npm%-global/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
   -- Homebrew on Linux（更嚴格的路徑）
   "^/home/linuxbrew/\\.linuxbrew/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  
+  -- === macOS 路徑 ===
+  -- macOS Homebrew（主要安裝位置）
   "^/opt/homebrew/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
-  -- 系統路徑（限制可執行檔名格式）
-  "^/usr/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  -- macOS 舊版 Homebrew（Intel Mac）
   "^/usr/local/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  -- macOS 用戶 bin 目錄（修復：移除點號以防止路徑遍歷）
+  "^/Users/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  -- macOS 用戶本地安裝
+  "^/Users/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]/\\.local/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  -- macOS Node.js 通過 nvm 安裝
+  "^/Users/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]/\\.nvm/versions/node/v[0-9]+\\.[0-9]+\\.[0-9]+/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  -- macOS Node.js 通過 npm global 安裝
+  "^/Users/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]/\\.npm%-global/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  -- macOS MacPorts 支援
+  "^/opt/local/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
+  -- macOS Homebrew Node.js 模組（支援 Claude Code 等工具）
+  "^/opt/homebrew/lib/node_modules/@[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+/[a-zA-Z0-9_./-]+%.js$",
+  "^/usr/local/lib/node_modules/@[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+/[a-zA-Z0-9_./-]+%.js$",
+  
+  -- === 通用系統路徑 ===
+  "^/usr/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
   "^/bin/[a-zA-Z][a-zA-Z0-9_-]*[a-zA-Z0-9]$",
 }
 
@@ -160,8 +179,10 @@ function M.validate_path_security(file_path)
     end
   end
   
-  -- 4. 白名單驗證
+  -- 4. 平台感知的白名單驗證
   local path_allowed = false
+  local is_macos = vim.fn.has("mac") == 1
+  
   for _, pattern in ipairs(ALLOWED_PATH_PATTERNS) do
     if canonical_path:match(pattern) then
       path_allowed = true
@@ -169,11 +190,115 @@ function M.validate_path_security(file_path)
     end
   end
   
+  -- macOS 特殊處理：檢查 /System/Volumes/Data 前綴
+  if not path_allowed and is_macos and canonical_path:match("^/System/Volumes/Data/") then
+    local normalized_macos_path = canonical_path:gsub("^/System/Volumes/Data", "")
+    for _, pattern in ipairs(ALLOWED_PATH_PATTERNS) do
+      if normalized_macos_path:match(pattern) then
+        path_allowed = true
+        break
+      end
+    end
+  end
+  
   if not path_allowed then
-    return false, "路徑不在安全白名單中"
+    -- 提供詳細的診斷信息，幫助用戶理解問題
+    local diagnostic_info = M.generate_path_diagnostic(canonical_path)
+    return false, diagnostic_info
   end
   
   return true, canonical_path
+end
+
+-- 🔍 生成路徑診斷信息（增強版，包含robust錯誤處理）
+function M.generate_path_diagnostic(path)
+  -- 防護：確保路徑參數安全
+  if not path or type(path) ~= "string" or path == "" then
+    return "路徑參數無效"
+  end
+  
+  -- 使用 pcall 保護系統調用
+  local os_type = "Unknown"
+  local user_home = ""
+  
+  local success, uname_result = pcall(vim.loop.os_uname)
+  if success and uname_result then
+    os_type = uname_result.sysname or "Unknown"
+  end
+  
+  user_home = os.getenv("HOME") or ""
+  
+  -- 檢測路徑類型以提供精確建議
+  local path_suggestions = {}
+  
+  -- 平台特定建議（防護性編程）
+  if os_type == "Darwin" then
+    table.insert(path_suggestions, "• Homebrew: brew install <command>")
+    table.insert(path_suggestions, "• 手動安裝到: /opt/homebrew/bin/ 或 /usr/local/bin/")
+    if user_home ~= "" then
+      -- 清理用戶路徑以防止格式化攻擊
+      local safe_home = user_home:gsub("[^%w/_.-]", "")
+      table.insert(path_suggestions, "• 用戶安裝: " .. safe_home .. "/.local/bin/")
+    end
+  elseif os_type == "Linux" then
+    table.insert(path_suggestions, "• 包管理器: apt/yum/pacman install <command>")
+    table.insert(path_suggestions, "• Snap: snap install <command>")
+    table.insert(path_suggestions, "• Homebrew on Linux: /home/linuxbrew/.linuxbrew/bin/")
+    if user_home ~= "" then
+      local safe_home = user_home:gsub("[^%w/_.-]", "")
+      table.insert(path_suggestions, "• 用戶安裝: " .. safe_home .. "/.local/bin/")
+    end
+  else
+    table.insert(path_suggestions, "• 請參考您的系統包管理器文檔")
+  end
+  
+  -- 檢測可能的路徑問題（使用安全的字串匹配）
+  local path_analysis = {}
+  local safe_path = path:sub(1, 1000)  -- 限制長度防止DoS
+  
+  if safe_path:match("^/tmp/") or safe_path:match("^/private/tmp/") then
+    table.insert(path_analysis, "⚠️  臨時目錄中的檔案不被允許")
+  elseif safe_path:match("%.%.") then
+    table.insert(path_analysis, "⚠️  包含路徑遍歷字符")
+  elseif not safe_path:match("^/") then
+    table.insert(path_analysis, "⚠️  相對路徑不被允許")
+  elseif safe_path:match("^/dev/") or safe_path:match("^/proc/") or safe_path:match("^/sys/") then
+    table.insert(path_analysis, "⚠️  系統目錄不被允許")
+  elseif safe_path:match("^/System/Volumes/Data/") and os_type == "Darwin" then
+    table.insert(path_analysis, "ℹ️  macOS 系統路徑自動解析（已適配跨平台兼容）")
+  else
+    table.insert(path_analysis, "ℹ️  路徑格式正確但不在白名單中")
+  end
+  
+  -- 構建診斷信息（使用安全的格式化）
+  local diagnostic_parts = {
+    "路徑安全驗證失敗",
+    "檢查路徑: " .. safe_path:gsub("%%", "%%%%"),  -- 轉義 % 字符
+    "",
+    "路徑分析:"
+  }
+  
+  -- 安全地添加分析結果
+  for _, analysis in ipairs(path_analysis) do
+    table.insert(diagnostic_parts, analysis)
+  end
+  
+  table.insert(diagnostic_parts, "")
+  table.insert(diagnostic_parts, "建議的安裝方式:")
+  
+  -- 安全地添加建議
+  for _, suggestion in ipairs(path_suggestions) do
+    table.insert(diagnostic_parts, suggestion)
+  end
+  
+  -- 檢查檔案存在性（使用 pcall 保護）
+  local file_check_success, file_exists = pcall(vim.fn.filereadable, safe_path)
+  if file_check_success and file_exists == 1 then
+    table.insert(diagnostic_parts, "")
+    table.insert(diagnostic_parts, "注意: 檔案存在但位置不安全，請考慮重新安裝到安全位置")
+  end
+  
+  return table.concat(diagnostic_parts, "\n")
 end
 
 -- 🔒 安全的檔案存在性和權限檢查

@@ -112,58 +112,31 @@ local function create_window_config(width, height, row, col, user_config)
   }
 end
 
--- 增強的 Buffer 驗證函數
-local function validate_buffer_with_retry(buf, max_retries)
-  max_retries = max_retries or 3
-  
-  for i = 1, max_retries do
-    -- 基本檢查
-    if not buf then
-      return false, "Buffer 為 nil"
-    end
-    
-    -- 檢查 buffer 是否有效
-    if not vim.api.nvim_buf_is_valid(buf) then
-      if i < max_retries then
-        -- 短暫等待後重試，處理時序問題
-        vim.wait(10) -- 等待 10ms
-      else
-        return false, "Buffer 無效 (ID: " .. tostring(buf) .. ")"
-      end
-    else
-      -- Buffer 有效，進行額外檢查
-      local success, buf_info = pcall(function()
-        return {
-          loaded = vim.api.nvim_buf_is_loaded(buf),
-          name = vim.api.nvim_buf_get_name(buf),
-          line_count = vim.api.nvim_buf_line_count(buf)
-        }
-      end)
-      
-      if success then
-        -- 詳細的 buffer 資訊，幫助診斷
-        vim.notify(string.format("✅ Buffer 驗證通過 (ID: %d, 載入: %s, 行數: %d)", 
-          buf, buf_info.loaded and "是" or "否", buf_info.line_count), vim.log.levels.DEBUG)
-        return true, nil
-      else
-        if i < max_retries then
-          vim.wait(10)
-        else
-          return false, "無法獲取 Buffer 資訊"
-        end
-      end
-    end
+-- 簡化的 Buffer 驗證函數（UX 優化版）
+local function validate_buffer_simple(buf)
+  if not buf then
+    return false, "Buffer 為 nil"
   end
   
-  return false, "Buffer 驗證失敗（多次重試後）"
+  if not vim.api.nvim_buf_is_valid(buf) then
+    return false, "Buffer 無效 (ID: " .. tostring(buf) .. ")"
+  end
+  
+  -- 僅在 DEBUG 模式下提供詳細資訊，減少通知干擾
+  if vim.log.levels.DEBUG >= vim.log.levels.WARN then
+    vim.schedule(function()
+      vim.notify(string.format("Buffer 驗證通過 (ID: %d)", buf), vim.log.levels.DEBUG)
+    end)
+  end
+  
+  return true, nil
 end
 
 -- 主要的浮動視窗創建函數
 function M.create_floating_window(buf, user_config)
-  -- 使用增強的 buffer 驗證
-  local buf_valid, buf_error = validate_buffer_with_retry(buf)
+  -- 使用簡化的 buffer 驗證
+  local buf_valid, buf_error = validate_buffer_simple(buf)
   if not buf_valid then
-    vim.notify("🔍 Buffer 驗證詳細錯誤: " .. tostring(buf_error), vim.log.levels.ERROR)
     return nil, "無效的 buffer: " .. tostring(buf_error)
   end
   
@@ -177,23 +150,14 @@ function M.create_floating_window(buf, user_config)
   -- 創建視窗配置
   local win_config = create_window_config(width, height, row, col, config)
   
-  -- 安全地創建浮動視窗（增強錯誤處理）
-  vim.notify(string.format("🪟 準備創建浮動視窗 (Buffer: %d, 尺寸: %dx%d)", 
-    buf, width, height), vim.log.levels.DEBUG)
-  
+  -- 優化的浮動視窗創建（快速且安靜）
   local success, win_or_error = pcall(vim.api.nvim_open_win, buf, true, win_config)
   
   if not success then
-    -- 詳細的錯誤診斷
-    local error_details = {
-      buffer_id = buf,
-      buffer_valid = vim.api.nvim_buf_is_valid(buf),
-      window_config = win_config,
-      error_message = tostring(win_or_error)
-    }
-    
-    vim.notify("🔍 視窗創建失敗詳細資訊: " .. vim.inspect(error_details), vim.log.levels.ERROR)
-    
+    -- 只在真正錯誤時通知，避免干擾
+    if vim.log.levels.ERROR >= vim.log.levels.WARN then
+      vim.notify("視窗創建失敗", vim.log.levels.ERROR)
+    end
     return nil, "無法創建浮動視窗: " .. tostring(win_or_error)
   end
   
@@ -342,6 +306,51 @@ function M.resize_window(win, new_config)
   return resize_success, resize_success and "視窗大小調整成功" or "視窗大小調整失敗"
 end
 
+-- 性能測試函數
+function M.benchmark_window_creation(iterations)
+  iterations = iterations or 10
+  local times = {}
+  
+  for i = 1, iterations do
+    local start_time = vim.loop.hrtime()
+    
+    -- 創建測試 buffer
+    local buf = vim.api.nvim_create_buf(false, true)
+    
+    -- 創建浮動視窗
+    local win, err = M.create_floating_window(buf)
+    
+    local end_time = vim.loop.hrtime()
+    local duration = (end_time - start_time) / 1000000 -- 轉換為毫秒
+    
+    table.insert(times, duration)
+    
+    -- 清理
+    if win then
+      M.close_window(win)
+    end
+    if vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, { force = true })
+    end
+  end
+  
+  -- 計算統計數據
+  table.sort(times)
+  local total = 0
+  for _, time in ipairs(times) do
+    total = total + time
+  end
+  
+  return {
+    iterations = iterations,
+    average = total / iterations,
+    median = times[math.ceil(iterations / 2)],
+    min = times[1],
+    max = times[iterations],
+    total = total
+  }
+end
+
 -- 健康檢查
 function M.health_check()
   local issues = {}
@@ -365,6 +374,12 @@ function M.health_check()
     end
   end
   
+  -- 性能基準測試
+  local benchmark = M.benchmark_window_creation(5)
+  if benchmark.average > 50 then -- 如果平均創建時間超過 50ms
+    table.insert(issues, string.format("視窗創建性能較慢 (平均: %.2fms)", benchmark.average))
+  end
+  
   return #issues == 0, issues
 end
 
@@ -384,6 +399,7 @@ function M.get_supported_options()
       "focus_window", 
       "get_window_info",
       "resize_window",
+      "benchmark_window_creation",
       "health_check"
     }
   }
