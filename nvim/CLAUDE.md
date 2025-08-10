@@ -6,6 +6,45 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a personal Neovim configuration built on the NvChad framework (v2.5), optimized for AI-assisted development and modern workflows. The configuration extends NvChad's robust foundation while maintaining framework compatibility and adding essential productivity tools.
 
+## Security Architecture (Updated 2025)
+
+### Layered Security System
+This project implements a three-tier security strategy to balance security with usability:
+
+#### Security Levels
+- **basic**: Basic PATH validation, maximum compatibility, suitable for development
+- **standard**: Standard security checks, balances security with usability (default)  
+- **paranoid**: Enterprise-grade strict checks with CVE fixes and deep path validation
+
+#### Configuration Methods
+```lua
+-- Method 1: Neovim global variable (recommended)
+vim.g.terminal_security_level = "standard"
+
+-- Method 2: Environment variable
+export NVIM_SECURITY_LEVEL=standard
+
+-- Method 3: Runtime switching
+:lua require('utils.terminal.security').set_security_level('basic')
+```
+
+#### Health Check & Diagnostics
+```lua
+-- Check security configuration status
+:lua print(vim.inspect(require('utils.terminal.security').health_check()))
+
+-- Diagnose specific command issues
+:lua require('utils.terminal.security-core').diagnose_command('claude')
+
+-- Security audit
+:lua require('utils.terminal.security').security_audit()
+```
+
+#### Module Structure
+- **security.lua**: Unified interface with dynamic loading
+- **security-core.lua**: Lightweight security (93 lines)
+- **security-paranoid.lua**: Enterprise security (430+ lines)
+
 ## Development Commands
 
 ### Plugin Management
