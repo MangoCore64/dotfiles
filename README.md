@@ -118,6 +118,7 @@ cp -r nvim ~/.config/
   - 智能剪貼簿系統 (<leader>cpr, <leader>cpp)
   - Claude Code AI 助手整合
   - **GitHub Copilot AI 智慧補全** (完美整合 blink.cmp)
+  - **Markdown 即時渲染** (render-markdown.nvim)
   - LSP 自動安裝與配置 (Mason)
   - 現代化的 UI 組件
   - 檔案樹導航
@@ -337,6 +338,18 @@ tail -f ~/.local/share/nvim/log
 
 ## 📋 更新記錄
 
+- **2025-08-28**:
+  - **新增 Markdown 即時渲染功能**：整合 render-markdown.nvim 插件
+  - **Markdown 增強特性**：
+    - 支援 6 級標題圖標和背景漸層
+    - 程式碼塊語法高亮和美化
+    - 表格邊框和對齊自動渲染
+    - 項目符號、核取方塊視覺化
+    - Callout 支援 (Note, Tip, Important, Warning, Caution)
+    - 連結圖標和類型識別
+    - Anti-conceal 功能：游標行自動隱藏渲染標記
+  - **性能優化**：針對大型 Markdown 文檔（5MB+）進行渲染性能優化
+  - **配置同步**：智能終端管理系統架構進一步優化
 - **2025-08-08**:
   - **文檔全面同步更新**：README.md 和 CLAUDE.md 反映最新架構變更和功能
   - **macOS 優化功能詳細說明**：Homebrew 路徑支援、平台檢測機制、終端重試邏輯
