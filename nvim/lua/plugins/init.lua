@@ -373,8 +373,10 @@ return {
   -- Blink.cmp 自定義配置
   {
     "saghen/blink.cmp",
-    -- 嚴格鎖定（核心功能）- 由 NvChad 管理版本
     opts = function()
+        require('render-markdown').setup({
+           completions = { blink = { enabled = true } },
+        })
       return require "configs.blink"
     end,
   },
@@ -407,4 +409,12 @@ return {
       incremental_selection = { enable = true },
     },
   },
+   {
+    'MeanderingProgrammer/render-markdown.nvim',
+    ft = { 'markdown', 'quarto' }, -- 延遲載入優化
+    dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.nvim' },
+    config = function()
+      require('configs.render-markdown').setup()
+    end,
+   }
 }

@@ -30,6 +30,14 @@ map("i", "jk", "<ESC>")
 -- <leader>cd   - 診斷剪貼板支援
 -- ============================================================================
 
+-- ============================================================================
+-- Markdown 渲染控制 (render-markdown.nvim)
+-- ============================================================================
+map("n", "<leader>mr", "<cmd>RenderMarkdown toggle<cr>", { desc = "Toggle markdown rendering" })
+map("n", "<leader>me", "<cmd>RenderMarkdown enable<cr>", { desc = "Enable markdown rendering" })
+map("n", "<leader>md", "<cmd>RenderMarkdown disable<cr>", { desc = "Disable markdown rendering" })
+map("n", "<leader>mc", "<cmd>RenderMarkdown config<cr>", { desc = "Show markdown config diff" })
+
 -- 主要操作 (Core Operations) - 80% 使用場景，延遲載入 clipboard 模組
 map("v", "<leader>cr", function() 
   local clipboard = require("utils.clipboard")
