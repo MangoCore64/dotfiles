@@ -20,17 +20,14 @@
 │   │   ├── API_REFERENCE.md   # API 參考手冊
 │   │   ├── EXTENDING.md       # 擴展開發指南
 │   │   └── TROUBLESHOOTING.md # 故障排除大全
-│   ├── tests/          # 🧪 品質保證測試系統
-│   │   ├── terminal/   # 終端系統整合測試
+│   ├── tests/          # 🧪 簡化測試系統
 │   │   └── clipboard/  # 剪貼簿功能測試
 │   ├── scripts/        # 自動化腳本
 │   └── lua/            # Lua 設定檔目錄
 │       ├── configs/    # 插件設定檔
 │       ├── plugins/    # 自定義插件
 │       └── utils/      # 高階工具模組
-│           ├── terminal/    # 智能終端管理系統
-│           ├── clipboard/   # 智能剪貼簿系統
-│           └── error-handler.lua # 統一錯誤處理
+│           └── clipboard/   # 智能剪貼簿系統（簡化架構）
 ├── install.sh          # 🔧 智能安裝腳本 (安全性強化)
 └── README.md           # 📖 使用說明文件
 ```
@@ -114,9 +111,8 @@ cp -r nvim ~/.config/
 - **Framework**: 基於 NvChad v2.5
 - **Plugin Manager**: lazy.nvim
 - **主要功能**:
-  - **智能終端管理系統** (Claude Code + Gemini AI 雙終端支援)
+  - **外部 AI 工具整合** (簡化的 tmux 視窗方式)
   - 智能剪貼簿系統 (<leader>cpr, <leader>cpp)
-  - Claude Code AI 助手整合
   - **GitHub Copilot AI 智慧補全** (完美整合 blink.cmp)
   - **Markdown 即時渲染** (render-markdown.nvim)
   - LSP 自動安裝與配置 (Mason)
@@ -128,11 +124,10 @@ cp -r nvim ~/.config/
   - Blink.cmp 高效能補全引擎 (Ctrl-j/k 導航, Ctrl-n 手動觸發)
 
 - **AI 輔助功能**:
-  - **智能終端管理**: Claude Code 與 Gemini AI 雙終端整合
-    - `<leader>cc` - 切換 Claude Code 終端
-    - `<leader>og` / `<leader>gm` - 切換 Gemini AI 終端
-    - `<leader>tt` - 在 Claude Code 和 Gemini 間切換
-    - `<C-q>` - 在終端模式下智能關閉當前終端
+  - **外部 AI 工具**: 簡化的 tmux 視窗整合
+    - `<leader>cc` - 在新 tmux 視窗開啟 Claude CLI
+    - `<leader>gm` - 在新 tmux 視窗開啟 Gemini CLI
+    - 遵循 "Do one thing well" 原則：nvim 專心編輯，AI 工具外部執行
   - **GitHub Copilot 整合**: 即時 AI 程式碼建議，與 blink.cmp 無縫整合
   - **Copilot 管理命令**: 
     - `<leader>coa` - GitHub 認證登入
@@ -163,7 +158,7 @@ cp -r nvim ~/.config/
    - 按照提示完成瀏覽器認證流程
    - 使用 `<leader>cos` 確認 Copilot 狀態為已啟用
 6. 測試功能：
-   - **智能終端管理**：按 `<leader>cc` 開啟 Claude Code，按 `<leader>og` 開啟 Gemini AI
+   - **外部 AI 工具**：按 `<leader>cc` 開啟 Claude CLI，按 `<leader>gm` 開啟 Gemini CLI
    - 智能剪貼簿：選取代碼後按 `<leader>cpr`
    - **GitHub Copilot**：編輯程式碼時自動顯示 AI 建議
 7. **查閱完整文檔**：
@@ -349,7 +344,7 @@ tail -f ~/.local/share/nvim/log
     - 連結圖標和類型識別
     - Anti-conceal 功能：游標行自動隱藏渲染標記
   - **性能優化**：針對大型 Markdown 文檔（5MB+）進行渲染性能優化
-  - **配置同步**：智能終端管理系統架構進一步優化
+  - **配置同步**：簡化架構，移除複雜的終端管理系統
 - **2025-08-08**:
   - **文檔全面同步更新**：README.md 和 CLAUDE.md 反映最新架構變更和功能
   - **macOS 優化功能詳細說明**：Homebrew 路徑支援、平台檢測機制、終端重試邏輯
@@ -376,12 +371,11 @@ tail -f ~/.local/share/nvim/log
   - 新增配置驗證機制 (config-validator.lua)
   - 實施混合版本管理策略（AI 工具鎖定版本，其他保持彈性）
 - 2025-07-31:
-  - **智能終端管理系統完整實現**
-  - 新增 Claude Code 與 Gemini AI 雙終端支援，支援智能切換
-  - 實現終端狀態檢測與同步，修復 buffer 重用問題
-  - 新增終端按鍵映射：`<leader>cc`, `<leader>og`, `<leader>tt`, `<C-q>`
-  - 修復 Gemini 終端的狀態同步和關閉邏輯
-  - 清理調試文檔，保留核心配置文件
+  - **AI 工具整合簡化**
+  - 移除複雜的內建終端管理系統
+  - 改為外部 tmux 視窗方式：`<leader>cc` (Claude), `<leader>gm` (Gemini)
+  - 遵循 Linus "Do one thing well" 原則
+  - 大幅減少代碼複雜度和維護成本
 - 2025-07-28:
   - **重大更新：GitHub Copilot 與 blink.cmp 完美整合**
   - 新增 GitHub Copilot AI 智慧補全功能，與 blink.cmp 無縫整合

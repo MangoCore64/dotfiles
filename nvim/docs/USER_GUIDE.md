@@ -1,19 +1,18 @@
-# Neovim AI 工具整合使用指南
+# Neovim 配置使用指南
 
 ## 簡介
 
-歡迎使用這個專為 AI 輔助開發優化的 Neovim 配置！本配置採用**輕量適配器架構** (Plan A)，提供了與 Claude Code 和 Gemini 的高效整合，讓您能在編輯器內直接使用這些強大的 AI 工具。
+歡迎使用這個專為開發效率優化的 Neovim 配置！本配置採用**簡潔外部工具整合**方式，通過 tmux 視窗提供 Claude Code 和 Gemini 等 AI 工具的便捷存取。
 
-> **✨ 架構亮點**: 採用純模組化設計，Claude 適配器精簡50%、Gemini 適配器精簡34%，同時保持100%向後相容性。
+> **✨ 設計理念**: 遵循 Linus "Do one thing well" 原則，每個工具各司其職，Neovim 專注編輯，AI 工具在外部視窗運行。
 
 ## 主要功能
 
 ### 🤖 AI 工具整合
 - **Claude Code** - Anthropic 的官方 CLI 工具
 - **Gemini** - Google 的 AI 助手 CLI
-- 統一的浮動視窗介面
-- 智能終端切換
-- 自動錯誤恢復
+- **外部 tmux 視窗** - 簡潔的視窗管理
+- **便捷按鍵** - 一鍵開啟 AI 工具
 
 ### 📋 智能剪貼板
 - 檔案參考模式（節省 token）
@@ -23,9 +22,8 @@
 
 ### 🚀 性能優化
 - 快速啟動（延遲載入）
-- 終端切換 < 200ms
-- 記憶體自動管理
-- 性能監控和報告
+- 外部工具不影響編輯器性能
+- 簡潔架構降低資源消耗
 
 ## 快速開始
 
@@ -40,11 +38,8 @@
 #### AI 工具快捷鍵
 | 快捷鍵 | 功能 | 說明 |
 |--------|------|------|
-| `<leader>cc` | 開啟/關閉 Claude Code | 在浮動視窗中顯示 Claude Code |
-| `<leader>gm` | 開啟/關閉 Gemini | 在浮動視窗中顯示 Gemini |
-| `<leader>tt` | 智能切換 | 在 Claude 和 Gemini 間切換 |
-| `<leader>ts` | 顯示狀態 | 查看終端管理器狀態 |
-| `<leader>tr` | 重置終端 | 重置所有終端狀態 |
+| `<leader>cc` | 開啟 Claude Code | 在新 tmux 視窗中開啟 Claude CLI |
+| `<leader>gm` | 開啟 Gemini | 在新 tmux 視窗中開啟 Gemini CLI |
 
 #### 剪貼板操作
 | 快捷鍵 | 功能 | 說明 |
@@ -53,7 +48,7 @@
 | `<leader>cr` | 檔案參考模式 | 複製為 `path:line` 格式 |
 | `<leader>cp` | 完整內容複製 | 自動分段處理 |
 
-**說明**：剪貼板快捷鍵定義在 `lua/mappings.lua` 中，終端快捷鍵定義在 `lua/plugins/init.lua` 中。
+**說明**：所有快捷鍵定義在 `lua/mappings.lua` 中。
 
 ### 工作流程範例
 
@@ -61,16 +56,16 @@
 ```
 1. 在編輯器中選擇要詢問的代碼
 2. 按 <leader>cs 發送到 Claude
-3. 按 <leader>cc 開啟 Claude Code
-4. 在浮動視窗中與 Claude 互動
-5. 按 <Esc> 或 <leader>cc 關閉視窗
+3. 按 <leader>cc 開啟 Claude Code（新 tmux 視窗）
+4. 在 tmux 視窗中與 Claude 互動
+5. 使用 tmux 快捷鍵切換回編輯器視窗
 ```
 
-#### 2. 在 AI 工具間切換
+#### 2. 使用多個 AI 工具
 ```
 1. 按 <leader>cc 開啟 Claude Code
-2. 按 <leader>tt 切換到 Gemini
-3. 按 <leader>tt 切換回 Claude Code
+2. 按 <leader>gm 開啟 Gemini
+3. 使用 tmux 快捷鍵在不同視窗間切換
 ```
 
 #### 3. 使用檔案參考模式
@@ -83,35 +78,18 @@
 
 ## 進階功能
 
-### 終端管理
+### 系統診斷
 
 #### 健康檢查
-執行健康檢查以診斷問題：
+使用 Neovim 內建健康檢查：
 ```vim
-:lua require('utils.terminal.manager').health_check()
+:checkhealth
 ```
 
-#### 查看統計資訊
-查看操作統計和性能數據：
+#### 剪貼板診斷
+檢查剪貼板功能狀態：
 ```vim
-:lua require('utils.terminal.manager').get_statistics()
-```
-
-### 性能監控
-
-#### 即時狀態
-```vim
-:lua require('utils.performance-monitor').show_status()
-```
-
-#### 詳細報告
-```vim
-:lua require('utils.performance-monitor').show_report()
-```
-
-#### 性能基準測試
-```vim
-:lua require('utils.performance-monitor').run_benchmarks()
+:lua require('utils.clipboard').diagnose_clipboard()
 ```
 
 ### 自定義配置
@@ -121,19 +99,17 @@
 ```lua
 -- 自定義 Claude Code 快捷鍵
 map("n", "<leader>ai", function()
-  require("utils.terminal.manager").toggle_claude_code()
-end, { desc = "Toggle Claude Code" })
+  local cwd = vim.fn.getcwd()
+  vim.fn.system('tmux new-window -c "' .. cwd .. '" "claude"')
+  vim.notify("Opened Claude CLI in new tmux window", vim.log.levels.INFO)
+end, { desc = "Open Claude CLI" })
 ```
 
-#### 調整浮動視窗大小
-修改 `lua/utils/terminal/ui.lua` 中的預設配置：
+#### 調整 tmux 視窗行為
+可以修改 `lua/mappings.lua` 中的命令，例如使用不同的 tmux 選項：
 ```lua
-local default_config = {
-  relative = "editor",
-  width = 0.9,    -- 90% 寬度
-  height = 0.9,   -- 90% 高度
-  border = "rounded",
-}
+-- 在當前 pane 分割而不是新視窗
+vim.fn.system('tmux split-window "claude"')
 ```
 
 ## 常見使用場景
@@ -166,15 +142,15 @@ local default_config = {
 - 提供精確的位置資訊
 - 方便後續查找
 
-### 2. 管理終端資源
-- 不使用時關閉終端以釋放資源
-- 定期執行健康檢查
-- 遇到問題時使用重置功能
+### 2. 管理 tmux 視窗
+- 不使用時關閉 tmux 視窗以釋放資源
+- 使用 tmux 的原生管理功能
+- 定期執行 Neovim 健康檢查
 
 ### 3. 性能優化
-- 監控記憶體使用情況
-- 注意啟動時間變化
-- 定期查看性能報告
+- 外部工具不會影響 Neovim 性能
+- 保持 Neovim 專注於編輯功能
+- 必要時重啟 Neovim 以清理狀態
 
 ### 4. 安全注意事項
 - 剪貼板會自動過濾敏感資訊
@@ -184,29 +160,29 @@ local default_config = {
 ## 提示與技巧
 
 ### 快速切換工作流
-1. 使用 `<leader>tt` 在工具間快速切換
+1. 使用 tmux 快捷鍵（如 Ctrl-a + 數字）在視窗間切換
 2. 保持常用工具開啟以加快訪問
-3. 利用浮動視窗的透明背景查看代碼
+3. 利用 tmux 的多視窗功能同時工作
 
 ### 高效複製貼上
 1. 大段代碼使用檔案參考模式
 2. 小段代碼直接複製
 3. 利用智能分段處理超長內容
 
-### 終端視窗管理
-1. 使用 `<C-w>` 相關快捷鍵調整視窗
-2. 在終端內使用 `<C-\><C-n>` 進入正常模式
-3. 使用 `i` 或 `a` 返回終端模式
+### tmux 視窗管理
+1. 使用 tmux 原生快捷鍵管理視窗
+2. Ctrl-a + c 創建新視窗
+3. Ctrl-a + 數字 切換到指定視窗
+4. Ctrl-a + & 關閉當前視窗
 
 ## 獲取幫助
 
 ### 相關文檔
 - **[架構文檔](ARCHITECTURE.md)** - 系統整體架構設計
-- **[終端架構](TERMINAL_ARCHITECTURE.md)** - 終端管理詳細架構
 - **[快速開始](QUICKSTART.md)** - 5分鐘快速上手
 - **[故障排除](TROUBLESHOOTING.md)** - 常見問題解決方案
 - **[API參考](API_REFERENCE.md)** - 完整API文檔
-- **[擴展指南](EXTENDING.md)** - 新增AI工具的方法
+- **[擴展指南](EXTENDING.md)** - 自定義配置方法
 
 ### 內建幫助
 - `:checkhealth` - 檢查系統健康狀態
@@ -220,12 +196,12 @@ local default_config = {
 4. **API使用**：參考 [API_REFERENCE.md](API_REFERENCE.md)
 
 ### 開發支援
-- **添加新工具**：參考 [EXTENDING.md](EXTENDING.md)
-- **架構理解**：閱讀 [TERMINAL_ARCHITECTURE.md](TERMINAL_ARCHITECTURE.md)
+- **自定義配置**：參考 [EXTENDING.md](EXTENDING.md)
+- **架構理解**：閱讀 [ARCHITECTURE.md](ARCHITECTURE.md)
 - **提交問題**：使用 GitHub Issues
 
 ## 結語
 
-這個配置旨在提供最佳的 AI 輔助開發體驗。通過整合強大的 AI 工具和優化的工作流程，讓您的開發效率大幅提升。記得經常探索新功能，並根據自己的需求進行自定義！
+這個配置旨在提供簡潔高效的開發體驗。通過外部工具整合和優化的工作流程，讓您的開發效率大幅提升。記得善用 tmux 和 Neovim 的原生功能，並根據自己的需求進行自定義！
 
 祝您編碼愉快！ 🚀

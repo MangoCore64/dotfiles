@@ -15,7 +15,7 @@ This is a personal dotfiles repository containing configuration files for vim, t
 ├── .claude/            # Claude Code configuration directory
 │   └── agents/         # Specialized sub-agents for different domains
 ├── bin/                # Utility scripts and binaries
-├── nvim/               # Neovim configuration (NvChad v2.5-based)
+├── nvim/               # Neovim configuration (NvChad v2.5-based, simplified)
 │   ├── init.lua        # NvChad bootstrap entry point
 │   ├── lazy-lock.json  # Plugin version lockfile
 │   ├── docs/           # Complete documentation system
@@ -24,21 +24,16 @@ This is a personal dotfiles repository containing configuration files for vim, t
 │   │   ├── ARCHITECTURE.md    # System architecture overview
 │   │   ├── API_REFERENCE.md   # API documentation
 │   │   ├── EXTENDING.md       # Extension guide
-│   │   ├── TERMINAL_ARCHITECTURE.md  # Terminal system details
 │   │   └── TROUBLESHOOTING.md # Troubleshooting guide
 │   ├── lua/            # Configuration modules
 │   │   ├── configs/    # Plugin configurations
 │   │   ├── plugins/    # Plugin management
-│   │   └── utils/      # Utility modules
-│   │       ├── clipboard/  # Modular clipboard system
-│   │       └── terminal/   # Modular terminal management
+│   │   └── utils/      # Simplified utility modules
+│   │       └── clipboard/  # Modular clipboard system (preserved)
 │   ├── scripts/        # Development and maintenance scripts
 │   │   └── run_tests.sh    # Test execution script
-│   └── tests/          # Comprehensive test suite
-│       ├── clipboard/      # Clipboard functionality tests
-│       ├── terminal/       # Terminal management tests
-│       ├── test_runner.lua # Test orchestration
-│       └── test_utils.lua  # Testing utilities
+│   └── tests/          # Test suite (to be cleaned up)
+│       └── clipboard/      # Clipboard functionality tests
 ├── install.sh          # Automated installation script with security features
 └── README.md           # User documentation
 ```
@@ -105,30 +100,29 @@ This is a personal dotfiles repository containing configuration files for vim, t
 - **Mouse support**: Full mouse integration
 - **Default shell**: bash
 
-### Neovim Configuration (`nvim/`)
+### Neovim Configuration (`nvim/`) - Simplified Architecture
 - **Framework**: Based on NvChad v2.5 with proven defaults and modern optimizations
 - **Plugin manager**: lazy.nvim with version-locked critical components
 - **Leader key**: Space for custom mappings
-- **AI integration**: 
-  - Claude Code plugin with intelligent terminal management
+- **AI integration** (Simplified):
+  - External AI tools via tmux windows (`<leader>cc`, `<leader>gm`)
   - GitHub Copilot integration with blink.cmp
-  - Dual-terminal system (Claude + Gemini) with smart switching
+  - Intelligent clipboard utilities for AI context sharing
 - **Session management**: Auto-session for project state persistence
-- **Modular architecture**: Separate clipboard/ and terminal/ modules for maintainability
-- **Comprehensive testing**: 32+ test files covering all major functionality
-- **macOS optimizations**: Homebrew path support, platform-specific terminal handling
+- **Modular architecture**: Simplified utils/ with essential clipboard functionality
+- **Testing**: Focused test suite for clipboard functionality
+- **macOS optimizations**: Homebrew path support
 - **Security**: Enhanced OSC 52 controls and path validation
-- **macOS Optimization**: Homebrew path support and startup retry logic
 
 ## Development Guidelines
 
 ### When modifying configurations:
-1. **Test-driven approach**: Always run tests first using `cd nvim && ./scripts/run_tests.sh`
-2. **Documentation updates**: Update both CLAUDE.md and relevant `docs/` files
+1. **Simplicity first**: Follow Linus-style "do one thing well" philosophy
+2. **Documentation updates**: Update CLAUDE.md and relevant `docs/` files
 3. **Cross-platform compatibility**: Test on both macOS and Linux environments
-4. **Security considerations**: Follow security patterns in `utils/*/security.lua`
-5. **Version management**: Use locked versions for critical AI tools, flexible for mature plugins
-6. **Modular design**: Keep clipboard and terminal systems as separate, testable modules
+4. **Security considerations**: Follow security patterns in clipboard utilities
+5. **Version management**: Use locked versions for critical plugins, flexible for mature ones
+6. **External tools**: Prefer tmux/external windows over complex internal terminal management
 7. **Backup strategy**: Update install script backup functionality if needed
 
 ### When working with Neovim:
@@ -136,15 +130,15 @@ This is a personal dotfiles repository containing configuration files for vim, t
 2. Add custom plugins to `lua/plugins/init.lua`
 3. Use `chadrc.lua` for theme and UI customizations
 4. **Test compatibility** with NvChad's plugin ecosystem
-5. **Use modular architecture**: Place utilities in `lua/utils/`
-6. **Follow security guidelines**: Validate paths and inputs
-7. **Performance considerations**: Use error-handler.lua and performance-monitor.lua
+5. **Keep it simple**: Avoid over-engineering utility modules
+6. **Follow security guidelines**: Validate paths and inputs in clipboard utilities
+7. **External approach**: Use tmux/system terminals for AI tools rather than complex integrations
 
 ### Security & Quality Assurance:
 - Install script should maintain 755 permissions
 - Configuration files should be readable but not executable
 - **Never commit sensitive information** or API keys
-- **Run security tests**: `nvim/tests/terminal/penetration_test.lua`
+- **Clipboard security**: Sensitive content detection in clipboard utilities
 - **URL validation**: All downloads must pass validation
 - **Path restrictions**: Only allow safe execution paths
 - **Backup strategy**: Timestamp-based backups with cleanup
@@ -153,20 +147,20 @@ This is a personal dotfiles repository containing configuration files for vim, t
 
 ### Pre-commit Testing
 ```bash
-# Run comprehensive test suite
-cd nvim && ./scripts/run_tests.sh
-
 # Verify configuration health
 nvim +checkhealth +qa
 
-# Security audit
-nvim --headless -c "luafile nvim/tests/terminal/penetration_test.lua" -c "qa"
+# Test clipboard functionality
+nvim -c "luafile tests/clipboard/test_clipboard.lua" -c "qa"
+
+# Test basic functionality
+./install.sh --check-only
 ```
 
 ### Continuous Integration
-- **Automated tests**: All commits trigger test suite
+- **Configuration health**: Verify NvChad setup and plugin compatibility
 - **Security scanning**: URL validation and path security
-- **Performance benchmarks**: Monitor terminal startup times
+- **Clipboard testing**: Ensure clipboard utilities work correctly
 - **Cross-platform verification**: macOS and Linux compatibility
 
 ## Commit Message Guidelines
@@ -236,47 +230,43 @@ The project now includes comprehensive documentation in `nvim/docs/`:
 
 ## Recent Architectural Improvements (2025-08)
 
-### macOS Terminal Optimization
-- **Homebrew Path Support**: Automatic detection of `/opt/homebrew/bin/`
-- **Startup Retry Logic**: Enhanced reliability for macOS environments
-- **Platform-Specific Configuration**: Smart macOS detection and optimization
+### Simplification (Linus-style "Do One Thing Well")
+- **Removed Complex Terminal Manager**: Simplified to external tmux window approach
+- **Eliminated Over-engineering**: Removed performance monitoring and unused error handlers
+- **Streamlined Utils**: Kept only essential clipboard functionality
+- **External AI Tools**: Use tmux/system terminals instead of complex internal management
 
-### Security Enhancements
-- **Path Validation**: Comprehensive security checks in `terminal/security.lua`
+### Security and Quality
 - **OSC 52 Controls**: Secure clipboard handling with opt-in policies
 - **Download Verification**: SHA256 checksums and URL validation
 - **Backup Management**: Automatic cleanup of temporary backup directories
+- **Focused Testing**: Essential clipboard and configuration health checks
 
 ### Developer Experience
 - **Comprehensive Documentation**: Complete docs/ directory structure
-- **Test Coverage**: Extensive test suite covering all major components
-- **Error Diagnostics**: Enhanced logging and error reporting
-- **Performance Monitoring**: Built-in performance tracking
+- **Simplified Architecture**: Easier to understand and maintain
+- **macOS Optimization**: Homebrew path support
+- **Clear Guidelines**: Updated development practices for simplicity
 
-## Testing and Quality Assurance
+## Testing and Quality Assurance - Simplified Approach
 
-### Comprehensive Test Suite
-- **Location**: `nvim/tests/` directory with 32+ professional test files
-- **Terminal System Tests**: 15+ tests covering Claude Code/Gemini AI integration
-  - **State management**: Terminal buffer lifecycle and synchronization
-  - **Security**: Path validation and command whitelisting
-  - **Platform support**: macOS Homebrew paths and platform-specific optimizations
-- **Clipboard System Tests**: 8+ tests for modular architecture and security
-  - **API compatibility**: Backward compatibility and critical fixes verification
-  - **Security hardening**: Input validation and sensitive content detection
-  - **Modular refactoring**: Component isolation and interface testing
+### Focused Test Suite
+- **Location**: `nvim/tests/` directory (cleaned up)
+- **Clipboard System Tests**: Essential tests for clipboard functionality
+  - **API compatibility**: Ensure backward compatibility
+  - **Security validation**: Input sanitization and sensitive content detection
+  - **Cross-platform support**: macOS and Linux clipboard integration
 
 ### Test Execution
 ```bash
-# Run all tests
-cd nvim && ./scripts/run_tests.sh
+# Configuration health check
+nvim +checkhealth +qa
 
-# Run specific test category
-nvim -c "luafile tests/terminal/test_*.lua"
-nvim -c "luafile tests/clipboard/test_*.lua"
+# Test clipboard functionality (if available)
+nvim -c "luafile tests/clipboard/test_clipboard.lua" -c "qa"
 
-# Health check mode
-./scripts/run_tests.sh --health-check
+# Installation verification
+./install.sh --check-only
 ```
 
 ### Development Documentation System

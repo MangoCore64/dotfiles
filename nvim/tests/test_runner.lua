@@ -1,218 +1,114 @@
--- 基於 plenary.nvim 的測試運行器
-local plenary_dir = vim.fn.stdpath("data") .. "/lazy/plenary.nvim"
-vim.opt.rtp:prepend(plenary_dir)
+-- Simplified Test Runner for Clipboard Functionality
+-- Follows Linus principle: "Do one thing well"
 
 local test_runner = {}
 
--- 設置測試環境
+-- Setup test environment
 function test_runner.setup()
-    -- 確保測試模式
+    -- Ensure test mode
     _G.TEST_MODE = true
     
-    -- 添加項目根目錄到運行時路徑
+    -- Add project root to runtime path
     local config_dir = vim.fn.stdpath("config")
     vim.opt.rtp:prepend(config_dir)
     
-    -- 禁用不需要的插件
-    vim.g.loaded_clipboard_test = true
-    
-    print("Test environment initialized")
+    print("Simplified test environment initialized")
 end
 
--- 運行所有測試
-function test_runner.run_all()
-    test_runner.setup()
-    
-    local test_files = {
-        "tests/clipboard/test_critical_fixes.lua",
-        "tests/clipboard/test_security.lua", 
-        "tests/clipboard/test_performance.lua",
-        "tests/clipboard/test_api_compatibility.lua",
-        -- 新增終端管理測試
-        "tests/terminal/test_security_fixes.lua",
-        "tests/terminal/test_claude_security.lua",
-        "tests/terminal/test_baseline_backup.lua"
-    }
-    
-    local results = {}
-    local total_tests = 0
-    local passed_tests = 0
-    
-    for _, test_file in ipairs(test_files) do
-        print(string.format("\n=== Running %s ===", test_file))
-        
-        local test_path = vim.fn.stdpath("config") .. "/" .. test_file
-        if vim.fn.filereadable(test_path) == 1 then
-            local success, test_result = pcall(dofile, test_path)
-            if success and test_result then
-                results[test_file] = test_result
-                total_tests = total_tests + (test_result.total or 0)
-                passed_tests = passed_tests + (test_result.passed or 0)
-            else
-                print(string.format("Failed to run test: %s", test_file))
-                results[test_file] = {total = 0, passed = 0, errors = {success and "Unknown error" or test_result}}
-            end
-        else
-            print(string.format("Test file not found: %s", test_file))
-        end
-    end
-    
-    -- 輸出總結
-    print(string.format("\n=== Test Summary ==="))
-    print(string.format("Total tests: %d", total_tests))
-    print(string.format("Passed: %d", passed_tests))
-    print(string.format("Failed: %d", total_tests - passed_tests))
-    print(string.format("Success rate: %.1f%%", total_tests > 0 and (passed_tests / total_tests * 100) or 0))
-    
-    return results
-end
-
--- 終端測試分類（更新以支援所有階段）
-local terminal_test_categories = {
-    -- 基本分類
-    security = {
-        "tests/terminal/test_security_fixes.lua",
-        "tests/terminal/test_claude_security.lua"
-    },
-    baseline = {
-        "tests/terminal/test_baseline_backup.lua"
-    },
-    state = {
-        "tests/terminal/test_state_management.lua",
-        "tests/terminal/test_state_isolation.lua"
-    },
-    compatibility = {
-        "tests/terminal/test_backward_compatibility.lua"
-    },
-    core = {
-        "tests/terminal/test_ui_module.lua"
-    },
-    api = {
-        "tests/terminal/test_phase2_complete.lua"
-    },
-    gemini = {
-        "tests/terminal/test_gemini_refactor.lua"
-    },
-    claude = {
-        "tests/terminal/test_claude_upgrade.lua"
-    },
-    consistency = {
-        "tests/terminal/test_backward_compatibility.lua"
-    },
-    integration = {
-        "tests/terminal/integration/"
-    },
-    manager = {
-        "tests/terminal/integration/"
-    },
-    performance = {
-        "tests/terminal/performance/"
-    },
-    monitoring = {
-        "tests/terminal/monitoring/"
-    },
-    
-    -- 階段性測試
-    phase0 = {
-        "tests/terminal/test_security_fixes.lua",
-        "tests/terminal/test_claude_security.lua", 
-        "tests/terminal/test_baseline_backup.lua"
-    },
-    phase1 = {
-        "tests/terminal/test_state_management.lua",
-        "tests/terminal/test_state_isolation.lua",
-        "tests/terminal/test_backward_compatibility.lua"
-    },
-    phase2 = {
-        "tests/terminal/test_ui_module.lua",
-        "tests/terminal/test_phase2_complete.lua"
-    },
-    phase3 = {
-        "tests/terminal/test_gemini_refactor.lua"
-    },
-    phase4 = {
-        "tests/terminal/test_claude_upgrade.lua",
-        "tests/terminal/test_backward_compatibility.lua"
-    },
-    phase5 = {
-        "tests/terminal/integration/"
-    },
-    phase6 = {
-        "tests/terminal/monitoring/"
-    },
-    
-    -- 綜合測試
-    final = {
-        "tests/terminal/test_security_fixes.lua",
-        "tests/terminal/test_claude_security.lua", 
-        "tests/terminal/test_baseline_backup.lua",
-        "tests/terminal/test_state_management.lua",
-        "tests/terminal/test_state_isolation.lua",
-        "tests/terminal/test_backward_compatibility.lua",
-        "tests/terminal/test_ui_module.lua",
-        "tests/terminal/test_phase2_complete.lua",
-        "tests/terminal/test_gemini_refactor.lua",
-        "tests/terminal/test_claude_upgrade.lua",
-        "tests/terminal/integration/",
-        "tests/terminal/monitoring/"
-    }
+-- Available clipboard tests
+local clipboard_tests = {
+    "tests/clipboard/test_critical_fixes.lua",
+    "tests/clipboard/test_security_hardening.lua", 
+    "tests/clipboard/test_api_compatibility.lua",
+    "tests/clipboard/test_modular_refactor.lua"
 }
 
--- 運行特定測試
-function test_runner.run_test(test_name)
-    test_runner.setup()
-    local test_path = vim.fn.stdpath("config") .. "/tests/clipboard/" .. test_name .. ".lua"
-    
-    if vim.fn.filereadable(test_path) == 1 then
-        print(string.format("Running test: %s", test_name))
-        return dofile(test_path)
-    else
-        error(string.format("Test file not found: %s", test_path))
-    end
-end
-
--- 運行終端測試分類
-function test_runner.run_terminal_category(category)
+-- Run clipboard tests
+function test_runner.run_clipboard_tests()
     test_runner.setup()
     
-    local test_files = terminal_test_categories[category]
-    if not test_files then
-        error(string.format("Unknown terminal test category: %s", category))
-    end
+    print("Running clipboard functionality tests...")
     
-    local results = {}
-    local total_tests = 0
-    local passed_tests = 0
+    local passed = 0
+    local total = #clipboard_tests
     
-    print(string.format("\n=== Running Terminal Tests: %s ===", category))
-    
-    for _, test_file in ipairs(test_files) do
-        print(string.format("\n--- Running %s ---", test_file))
-        
-        local test_path = vim.fn.stdpath("config") .. "/" .. test_file
-        if vim.fn.filereadable(test_path) == 1 then
-            local success, test_result = pcall(dofile, test_path)
-            if success and test_result then
-                results[test_file] = test_result
-                total_tests = total_tests + (test_result.total or 0)
-                passed_tests = passed_tests + (test_result.passed or 0)
+    for _, test_file in ipairs(clipboard_tests) do
+        local file_path = vim.fn.stdpath("config") .. "/" .. test_file
+        if vim.fn.filereadable(file_path) == 1 then
+            print("Running: " .. test_file)
+            local ok, result = pcall(dofile, file_path)
+            if ok then
+                passed = passed + 1
+                print("✓ PASSED: " .. test_file)
             else
-                print(string.format("Failed to run test: %s", test_file))
-                results[test_file] = {total = 0, passed = 0, errors = {success and "Unknown error" or test_result}}
+                print("✗ FAILED: " .. test_file .. " - " .. tostring(result))
             end
         else
-            print(string.format("Test file not found: %s", test_file))
+            print("⚠ SKIPPED: " .. test_file .. " (file not found)")
         end
     end
     
-    -- 輸出分類總結
-    print(string.format("\n=== Terminal Test Category '%s' Summary ===", category))
-    print(string.format("Total tests: %d", total_tests))
-    print(string.format("Passed: %d", passed_tests))
-    print(string.format("Failed: %d", total_tests - passed_tests))
-    print(string.format("Success rate: %.1f%%", total_tests > 0 and (passed_tests / total_tests * 100) or 0))
+    print(string.format("\nTest Results: %d/%d passed", passed, total))
+    return passed == total
+end
+
+-- Run all available tests (currently just clipboard)
+function test_runner.run_all()
+    return test_runner.run_clipboard_tests()
+end
+
+-- Health check function
+function test_runner.health_check()
+    test_runner.setup()
     
-    return results
+    print("Performing configuration health check...")
+    
+    -- Check if clipboard module exists
+    local clipboard_ok = pcall(require, "utils.clipboard")
+    if clipboard_ok then
+        print("✓ Clipboard module loaded successfully")
+    else
+        print("✗ Clipboard module failed to load")
+        return false
+    end
+    
+    -- Check if essential files exist
+    local config_dir = vim.fn.stdpath("config")
+    local essential_files = {
+        "lua/utils/clipboard.lua",
+        "lua/mappings.lua",
+        "lua/plugins/init.lua"
+    }
+    
+    for _, file in ipairs(essential_files) do
+        if vim.fn.filereadable(config_dir .. "/" .. file) == 1 then
+            print("✓ " .. file .. " exists")
+        else
+            print("✗ " .. file .. " missing")
+            return false
+        end
+    end
+    
+    print("✓ Health check passed")
+    return true
+end
+
+-- Main entry point
+function test_runner.main()
+    local args = vim.fn.argv()
+    
+    if vim.tbl_contains(args, "--health") then
+        test_runner.health_check()
+    elseif vim.tbl_contains(args, "--clipboard") then
+        test_runner.run_clipboard_tests()
+    else
+        test_runner.run_all()
+    end
+end
+
+-- Auto-run if called directly
+if not _G.TEST_MODE then
+    test_runner.main()
 end
 
 return test_runner

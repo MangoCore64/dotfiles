@@ -142,36 +142,24 @@ map("n", "<leader>co", toggle_copilot, { desc = "Toggle Copilot (smart)" })
 map("n", "<leader>cO", copilot_menu, { desc = "Copilot management menu" })
 
 -- ============================================================================
--- 🔍 效能監控系統
+-- Session Management - Simplified
 -- ============================================================================
 -- 
--- 快速存取效能狀態和分析工具：
--- <leader>pf   - 效能狀態 (即時資訊) - 避免與 session 衝突
--- <leader>pr   - 效能報告 (詳細分析)
--- <leader>pb   - 執行效能基準測試
--- <leader>pm   - 切換監控狀態 (啟用/停用)
+-- 保留 persistence 插件的基本會話功能，移除複雜的效能監控
+-- <leader>ps   - 保存會話
+-- <leader>pl   - 載入會話
 -- ============================================================================
 
--- 效能監控快速操作 - 延遲載入避免啟動開銷
-map("n", "<leader>pf", function()
-  local perf_monitor = require('utils.performance-monitor')
-  perf_monitor.show_status()
-end, { desc = "Performance Status" })
+-- 簡單的會話管理
+map("n", "<leader>ps", function()
+  vim.cmd("SessionSave")
+  vim.notify("Session saved", vim.log.levels.INFO)
+end, { desc = "Save session" })
 
-map("n", "<leader>pr", function()
-  local perf_monitor = require('utils.performance-monitor')
-  perf_monitor.show_report()
-end, { desc = "Performance Report" })
-
-map("n", "<leader>pb", function()
-  local perf_monitor = require('utils.performance-monitor')
-  perf_monitor.run_benchmarks()
-end, { desc = "Performance Benchmarks" })
-
-map("n", "<leader>pm", function()
-  local perf_monitor = require('utils.performance-monitor')
-  perf_monitor.toggle_monitoring()
-end, { desc = "Toggle performance Monitoring" })
+map("n", "<leader>pl", function()
+  vim.cmd("SessionLoad")
+  vim.notify("Session loaded", vim.log.levels.INFO)
+end, { desc = "Load session" })
 
 -- ============================================================================
 -- 🛠️ 按鍵映射管理工具
@@ -236,30 +224,27 @@ map("n", "<leader><leader>l", toggle_leader, { desc = "Toggle leader key" })
 map("n", "<leader><leader>t", test_key_delay, { desc = "Test key delay" })
 
 -- ============================================================================
--- 🚀 Terminal Management System (Plan A - Lightweight Adapter Architecture)
+-- 🚀 External AI Tools - Simplified (Linus-style: "Do one thing well")
 -- ============================================================================
 -- 
--- 終端快捷鍵映射 - 重構後的輕量適配器架構
--- <leader>cc   - 切換 Claude Code 終端
--- <leader>gm   - 切換 Gemini CLI 終端  
--- <leader>tt   - 智能終端切換 (Claude ↔ Gemini)
+-- 簡化後的 AI 工具整合 - 使用外部視窗管理
+-- <leader>cc   - 在新 tmux 視窗開啟 Claude Code
+-- <leader>gm   - 在新 tmux 視窗開啟 Gemini CLI
 -- ============================================================================
 
--- 終端管理映射 - 延遲載入管理器
+-- 在新 tmux 視窗開啟 Claude CLI
 map("n", "<leader>cc", function()
-  local manager = require('utils.terminal.manager')
-  manager.toggle_claude_code()
-end, { desc = "Toggle Claude Code Terminal" })
+  local cwd = vim.fn.getcwd()
+  vim.fn.system('tmux new-window -c "' .. cwd .. '" "claude"')
+  vim.notify("Opened Claude CLI in new tmux window", vim.log.levels.INFO)
+end, { desc = "Open Claude CLI in tmux window" })
 
+-- 在新 tmux 視窗開啟 Gemini CLI
 map("n", "<leader>gm", function()
-  local manager = require('utils.terminal.manager')
-  manager.toggle_gemini()
-end, { desc = "Toggle Gemini CLI Terminal" })
-
-map("n", "<leader>tt", function()
-  local manager = require('utils.terminal.manager')
-  manager.switch_terminal()
-end, { desc = "Smart Terminal Switch (Claude ↔ Gemini)" })
+  local cwd = vim.fn.getcwd()
+  vim.fn.system('tmux new-window -c "' .. cwd .. '" "gemini"')
+  vim.notify("Opened Gemini CLI in new tmux window", vim.log.levels.INFO)
+end, { desc = "Open Gemini CLI in tmux window" })
 
 -- 其他原有快捷鍵保留
 -- map({ "n", "i", "v" }, "<C-s>", "<cmd> w <cr>")

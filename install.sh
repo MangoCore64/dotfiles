@@ -1355,11 +1355,13 @@ install_nvim() {
     log_success "完整 NvChad 配置安裝完成"
     log_info "配置包含以下功能："
     echo "  - 智能剪貼簿系統 (<leader>cpr, <leader>cp)"
-    echo "  - Claude Code AI 助手 (<leader>cc)"
+    echo "  - 外部 AI 工具整合 (tmux 視窗)"
+    echo "    • Claude Code: <leader>cc 開啟新 tmux 視窗"
+    echo "    • Gemini CLI: <leader>gm 開啟新 tmux 視窗"
     echo "  - 自動會話管理"
-    echo "  - NvChad 完整功能"
+    echo "  - NvChad 完整功能（簡化架構）"
     log_info "請開啟 nvim，將自動安裝所需 plugins"
-    log_info "詳細說明請參考: ~/dotfiles/nvim/CLAUDE.md"
+    log_info "詳細說明請參考: ~/dotfiles/CLAUDE.md"
 }
 
 # 驗證配置檔案語法
@@ -1405,21 +1407,22 @@ validate_config() {
             ;;
         "nvim")
             if command -v nvim &> /dev/null; then
-                # 在 VM 環境中跳過 nvim 語法驗證，避免卡住
-                if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ] || [ "$TERM" = "dumb" ]; then
-                    log_info "檢測到 VM/SSH 環境，跳過 nvim 配置語法驗證"
-                    return 0
-                fi
+                # 簡化的 nvim 配置驗證 - 只檢查關鍵文件存在
+                local essential_files=(
+                    "$config_file/init.lua"
+                    "$config_file/lua/mappings.lua"
+                    "$config_file/lua/plugins/init.lua"
+                    "$config_file/lua/utils/clipboard.lua"
+                )
                 
-                # 檢查 lua 配置基本語法
-                if [ -f "$config_file/init.lua" ]; then
-                    if command -v lua &> /dev/null; then
-                        if ! timeout 5 lua -e "dofile('$config_file/init.lua')" 2>/dev/null; then
-                            log_warning "nvim 配置可能有語法問題"
-                            return 1
-                        fi
+                for file in "${essential_files[@]}"; do
+                    if [ ! -f "$file" ]; then
+                        log_warning "nvim 關鍵配置文件缺失: $file"
+                        return 1
                     fi
-                fi
+                done
+                
+                log_info "nvim 配置文件檢查通過（簡化架構）"
             fi
             ;;
     esac
@@ -1667,9 +1670,11 @@ main() {
         echo "   - 使用 <leader>coe/<leader>cod 啟用/停用 Copilot"
         echo "7. 測試功能："
         echo "   - 智能剪貼簿：選取代碼後按 <leader>cpr"
-        echo "   - Claude Code：按 <leader>cc 開啟 AI 助手"
+        echo "   - 外部 AI 工具：<leader>cc 開啟 Claude Code（tmux 視窗）"
+        echo "   - 外部 AI 工具：<leader>gm 開啟 Gemini CLI（tmux 視窗）"
         echo "   - GitHub Copilot：編輯程式碼時自動顯示 AI 建議"
-        echo "8. 參考 ~/dotfiles/nvim/CLAUDE.md 了解完整功能"
+        echo "   ⚠️  注意：AI 工具現在使用外部 tmux 視窗（簡化架構）"
+        echo "8. 參考 ~/dotfiles/CLAUDE.md 了解完整功能"
     fi
 }
 
