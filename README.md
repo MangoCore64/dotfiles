@@ -101,10 +101,13 @@ cp -r nvim ~/.config/
 
 ### Tmux 設定特色
 
-- **前綴鍵**: `Ctrl-a` (取代預設的 `Ctrl-b`)
+- **前綴鍵**: `Ctrl-q` (取代預設的 `Ctrl-b`)
 - **Vi 模式**: 啟用 vi 風格的按鍵綁定
 - **滑鼠支援**: 啟用滑鼠操作
-- **預設 Shell**: bash
+- **遠端模式**: `Ctrl-q R` 進入遠端模式（按鍵直通）
+- **插件管理**: TPM (Tmux Plugin Manager)
+- **主題**: Nord Theme (簡潔北歐風)
+- **插件**: tmux-resurrect, tmux-continuum, tmux-yank
 
 ### Neovim 設定特色
 
@@ -146,7 +149,8 @@ cp -r nvim ~/.config/
 
 ### Tmux
 1. 重啟 tmux 或執行 `tmux source-file ~/.tmux.conf`
-2. 新的設定立即生效
+2. 使用 `Ctrl-q` 作為前綴鍵（不是 Ctrl-a）
+3. 按 `Ctrl-q + I` 安裝 TPM 插件
 
 ### Neovim
 1. 腳本會自動安裝 neovim (如未安裝)

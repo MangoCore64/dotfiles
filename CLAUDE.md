@@ -11,7 +11,7 @@ This is a personal dotfiles repository containing configuration files for vim, t
 ```
 .
 ├── .vimrc              # Vim configuration with vim-plug and AI plugins
-├── .tmux.conf          # Tmux configuration with Ctrl-a prefix
+├── .tmux.conf          # Tmux configuration with Ctrl-q prefix
 ├── .claude/            # Claude Code configuration directory
 │   └── agents/         # Specialized sub-agents for different domains
 ├── bin/                # Utility scripts and binaries
@@ -95,10 +95,12 @@ This is a personal dotfiles repository containing configuration files for vim, t
 - **Security**: Disabled unsafe features and modelines
 
 ### Tmux Configuration (`.tmux.conf`)
-- **Prefix key**: `Ctrl-a` (replaces default `Ctrl-b`)
+- **Prefix key**: `Ctrl-q` (replaces default `Ctrl-b`)
 - **Vi mode**: Enabled for copy/paste operations
 - **Mouse support**: Full mouse integration
-- **Default shell**: bash
+- **Remote mode**: `Ctrl-q R` for remote session passthrough
+- **Theme**: Nord theme
+- **Plugins**: TPM, tmux-resurrect, tmux-continuum, tmux-yank
 
 ### Neovim Configuration (`nvim/`) - Simplified Architecture
 - **Framework**: Based on NvChad v2.5 with proven defaults and modern optimizations
