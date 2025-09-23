@@ -1,0 +1,26 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = true
+[remote "origin"]
+	url = https://github.com/Bash-it/bash-it.git
+	fetch = +refs/heads/master:refs/remotes/origin/master
+[branch "master"]
+	remote = origin
+	merge = refs/heads/master
+	vscode-merge-base = origin/master
+[submodule "test_lib/bats-assert"]
+	active = true
+	url = https://github.com/bats-core/bats-assert
+[submodule "test_lib/bats-core"]
+	active = true
+	url = https://github.com/bats-core/bats-core
+[submodule "test_lib/bats-file"]
+	active = true
+	url = https://github.com/bats-core/bats-file
+[submodule "test_lib/bats-support"]
+	active = true
+	url = https://github.com/bats-core/bats-support
