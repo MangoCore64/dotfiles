@@ -1,0 +1,83 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "JetBrainsMono Nerd Font", "Source Han Sans TC", sans-serif;
+    font-size: 14px;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: transparent;
+}
+
+/* 模組通用容器 - 2026 玻璃擬態 */
+.modules-left, .modules-center, .modules-right {
+    background-color: rgba(26, 27, 38, 0.85);
+    border-radius: 10px;
+    padding: 2px 12px;
+    margin: 5px 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 電源選單按鈕 */
+#custom-power {
+    color: #f7768e;
+    font-size: 18px;
+    padding-right: 15px;
+    margin-right: 5px;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 媒體播放器 */
+#mpris {
+    color: #bb9af7;
+    font-weight: bold;
+    margin-left: 15px;
+}
+
+/* 防睡眠開關 */
+#idle_inhibitor {
+    color: #e0af68;
+    font-size: 16px;
+    padding-right: 15px;
+}
+
+#idle_inhibitor.activated {
+    color: #7dcfff;
+}
+
+/* 更新提醒 */
+#custom-updates {
+    color: #9ece6a;
+    font-weight: bold;
+    padding-right: 15px;
+}
+
+/* 右側其他模組間距 */
+#cpu, #memory, #pulseaudio, #network, #tray {
+    margin-left: 15px;
+}
+
+/* 工作區 */
+#workspaces button {
+    padding: 0 8px;
+    color: #a9b1d6;
+    border-radius: 5px;
+    margin: 2px 4px;
+    transition: all 0.3s ease;
+}
+
+#workspaces button.active {
+    background-color: rgba(122, 162, 247, 0.3);
+    color: #7aa2f2;
+    border-bottom: 2px solid #7aa2f2;
+}
+
+/* 各模組專屬色彩 */
+#clock { color: #c0caf5; font-weight: bold; }
+#cpu { color: #9ece6a; }
+#memory { color: #bb9af7; }
+#pulseaudio { color: #e0af68; }
+#network { color: #7dcfff; }
+
+#tray { margin-left: 15px; }

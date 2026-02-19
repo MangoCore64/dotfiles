@@ -1,0 +1,24 @@
+{
+    "label": "lock",
+    "action": "/usr/bin/hyprlock",
+    "text": "鎖定",
+    "keybind": "l"
+}
+{
+    "label": "logout",
+    "action": "/usr/bin/hyprctl dispatch exit",
+    "text": "登出",
+    "keybind": "e"
+}
+{
+    "label": "shutdown",
+    "action": "/usr/bin/systemctl poweroff",
+    "text": "關機",
+    "keybind": "s"
+}
+{
+    "label": "reboot",
+    "action": "/usr/bin/systemctl reboot",
+    "text": "重啟",
+    "keybind": "r"
+}

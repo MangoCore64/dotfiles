@@ -1,0 +1,92 @@
+[
+    {
+        // --- 主螢幕配置 (DP-3) ---
+        "layer": "top",
+        "position": "top",
+        "height": 40,
+        "margin-top": 5,
+        "margin-left": 10,
+        "margin-right": 10,
+        "output": "DP-3",
+        "modules-left": [
+            "custom/power",
+            "hyprland/workspaces",
+            "mpris"
+        ],
+        "modules-center": [
+            "clock"
+        ],
+        "modules-right": [
+            "idle_inhibitor",
+            "custom/updates",
+            "cpu",
+            "memory",
+            "pulseaudio",
+            "network",
+            "tray"
+        ],
+
+        // --- 模組詳細設定 ---
+
+        "custom/power": {
+            "format": "  ",
+            "tooltip": false,
+            "on-click": "wlogout"
+        },
+
+        "mpris": {
+            "format": "{player_icon} {title}",
+            "format-paused": "󰏤 {title}",
+            "player-icons": {
+                "default": "󰝚",
+                "spotify": "",
+                "vivaldi": "󰖟"
+            },
+            "status-icons": {
+                "paused": "󰏤"
+            },
+            "max-length": 30
+        },
+
+        "idle_inhibitor": {
+            "format": "{icon}",
+            "format-icons": {
+                "activated": "󰛐",
+                "deactivated": "󰛑"
+            }
+        },
+
+        "custom/updates": {
+            "format": "󱑢 {}",
+            "interval": 3600,
+            "exec": "checkupdates | wc -l",
+            "exec-if": "exit 0",
+            "on-click": "alacritty -e sudo pacman -Syu",
+            "tooltip": false
+        },
+
+        "hyprland/workspaces": {
+            "format": "{name}",
+            "on-click": "activate",
+            "all-outputs": false,
+            "persistent-workspaces": { "1": [], "2": [], "3": [], "4": [] }
+        },
+
+        "clock": {
+            "format": "󱑂 {:%H:%M  󰃭 %Y/%m/%d}",
+            "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+        },
+
+        "pulseaudio": {
+            "format": "{icon} {volume}% ",
+            "format-muted": "󰝟 ",
+            "format-icons": { "default": ["", "", ""] },
+            "on-click": "pavucontrol"
+        },
+
+        "cpu": { "format": " {usage}% " },
+        "memory": { "format": "󰍛 {used}GB " },
+        "network": { "format": " {essid} ", "on-click": "nm-connection-editor" },
+        "tray": { "spacing": 10 }
+    }
+]

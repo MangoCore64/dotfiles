@@ -1,0 +1,42 @@
+* {
+	background-image: none;
+	transition: 20ms;
+}
+
+window {
+	background-color: rgba(26, 27, 38, 0.5); /* 搭配 Hyprland 模糊 */
+}
+
+button {
+	color: #ffffff;
+	background-color: rgba(26, 27, 38, 0.7);
+	outline-style: none;
+	border: none;
+	border-radius: 20px;
+	margin: 20px;
+	padding: 10px;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size: 25%;
+}
+
+button:focus, button:active, button:hover {
+	background-color: rgba(122, 162, 247, 0.3); /* 您的主題藍 */
+	outline-style: none;
+}
+
+#lock {
+    background-image: image(url("/usr/share/wlogout/icons/lock.png"));
+}
+
+#logout {
+    background-image: image(url("/usr/share/wlogout/icons/logout.png"));
+}
+
+#shutdown {
+    background-image: image(url("/usr/share/wlogout/icons/shutdown.png"));
+}
+
+#reboot {
+    background-image: image(url("/usr/share/wlogout/icons/reboot.png"));
+}
