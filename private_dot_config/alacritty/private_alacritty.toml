@@ -1,0 +1,63 @@
+[general]
+import = ["~/.config/alacritty/themes/themes/gruvbox_material_hard_dark.toml"]
+
+[env]
+#TERM = "xterm-256color"
+
+[window]
+dynamic_title = false
+dynamic_padding = true
+opacity = 0.95 
+blur = false
+decorations = "None"
+startup_mode = "Fullscreen"
+option_as_alt = "Both"
+
+[scrolling]
+history = 10000
+
+[font]
+normal = { family = "FiraCode Nerd Font", style = "Regular" }
+bold = { family = "FiraCode Nerd Font", style = "Bold" }
+italic = { family = "FiraCode Nerd Font", style = "Italic" }
+size = 20
+
+[colors]
+transparent_background_colors = true
+
+[terminal]
+osc52 = "CopyPaste"  # 允許終端機存取剪貼簿
+
+[selection]
+save_to_clipboard = true
+
+[mouse]
+hide_when_typing = true
+
+[keyboard]
+bindings = [
+  { key = "H", mods = "Alt", chars = "\u001bh" },
+  { key = "J", mods = "Alt", chars = "\u001bj" },
+  { key = "K", mods = "Alt", chars = "\u001bk" },
+  { key = "L", mods = "Alt", chars = "\u001bl" },
+  { key = "Return", mods = "Shift", chars = "\u001b\r" },
+  # 切換全螢幕模式 (建議設為 Alt + Enter)
+  { key = "Enter", mods = "Alt", action = "ToggleFullscreen" },
+  
+  # 如果你想切換「縮小/最大化」，也可以設定這個
+  { key = "M", mods = "Alt", action = "ToggleMaximized" },
+]
+
+[[hints.enabled]]
+# 這裡建議換成 Alt + I (或是你喜歡的鍵)，避開系統預設
+binding = { key = "I", mods = "Alt" } 
+regex = "(https?|ftp|file)://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]"
+command = "xdg-open" # 如果你是 Linux，建議用 xdg-open；Mac 用 open
+post_processing = true
+mouse = { enabled = true }
+
+[[hints.enabled]]
+# 加碼一個：偵測 IP 位址並點擊複製
+binding = { key = "P", mods = "Alt" }
+regex = "([0-9]{1,3}\\.){3}[0-9]{1,3}"
+action = "Copy"
