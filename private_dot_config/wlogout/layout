@@ -1,24 +1,36 @@
 {
     "label": "lock",
-    "action": "/usr/bin/hyprlock",
-    "text": "鎖定",
+    "action": "/usr/bin/loginctl lock-session",
+    "text": "鎖定 (Lock)",
     "keybind": "l"
+}
+{
+    "label": "hibernate",
+    "action": "/usr/bin/systemctl hibernate",
+    "text": "深度休眠 (Hibernate)",
+    "keybind": "h"
 }
 {
     "label": "logout",
     "action": "/usr/bin/hyprctl dispatch exit",
-    "text": "登出",
+    "text": "登出 (Logout)",
     "keybind": "e"
 }
 {
     "label": "shutdown",
     "action": "/usr/bin/systemctl poweroff",
-    "text": "關機",
+    "text": "關機 (Shutdown)",
     "keybind": "s"
+}
+{
+    "label": "suspend",
+    "action": "/usr/bin/systemctl suspend",
+    "text": "睡眠 (Suspend)",
+    "keybind": "u"
 }
 {
     "label": "reboot",
     "action": "/usr/bin/systemctl reboot",
-    "text": "重啟",
+    "text": "重啟 (Reboot)",
     "keybind": "r"
 }
